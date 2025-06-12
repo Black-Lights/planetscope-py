@@ -1,7 +1,8 @@
 """Setup configuration for planetscope-py."""
 
-from setuptools import setup, find_packages
 from pathlib import Path
+
+from setuptools import find_packages, setup
 
 # Read version from _version.py
 version_file = Path(__file__).parent / "planetscope_py" / "_version.py"
@@ -19,7 +20,7 @@ if readme_file.exists():
 # Core requirements (production)
 install_requires = [
     "requests>=2.32.4",
-    "shapely>=2.1.0", 
+    "shapely>=2.1.0",
     "pyproj>=3.7.1",
     "numpy>=2.2.0",
     "pandas>=2.2.3",
@@ -58,7 +59,7 @@ setup(
         "dev": [
             # Testing
             "pytest>=8.3.4",
-            "pytest-cov>=6.0.0", 
+            "pytest-cov>=6.0.0",
             "pytest-mock>=3.14.0",
             "pytest-xdist>=3.6.0",
             "pytest-asyncio>=0.24.0",
@@ -79,7 +80,7 @@ setup(
         ],
         "docs": [
             "sphinx>=8.1.3",
-            "sphinx-rtd-theme>=3.0.2", 
+            "sphinx-rtd-theme>=3.0.2",
             "myst-parser>=4.0.0",
         ],
         "jupyter": [
@@ -95,7 +96,7 @@ setup(
         ],
         "viz": [
             "matplotlib>=3.10.0",
-            "folium>=0.19.1", 
+            "folium>=0.19.1",
             "plotly>=5.24.1",
         ],
         "performance": [
@@ -104,11 +105,21 @@ setup(
         ],
         "all": [
             # Include all optional dependencies
-            "pytest>=8.3.4", "pytest-cov>=6.0.0", "pytest-mock>=3.14.0",
-            "black>=24.12.0", "flake8>=7.2.0", "mypy>=1.13.0", "pre-commit>=4.0.1",
-            "sphinx>=8.1.3", "sphinx-rtd-theme>=3.0.2", 
-            "jupyter>=1.1.1", "matplotlib>=3.10.0", "folium>=0.19.1",
-            "geopandas>=1.0.1", "rasterio>=1.4.3", "plotly>=5.24.1",
+            "pytest>=8.3.4",
+            "pytest-cov>=6.0.0",
+            "pytest-mock>=3.14.0",
+            "black>=24.12.0",
+            "flake8>=7.2.0",
+            "mypy>=1.13.0",
+            "pre-commit>=4.0.1",
+            "sphinx>=8.1.3",
+            "sphinx-rtd-theme>=3.0.2",
+            "jupyter>=1.1.1",
+            "matplotlib>=3.10.0",
+            "folium>=0.19.1",
+            "geopandas>=1.0.1",
+            "rasterio>=1.4.3",
+            "plotly>=5.24.1",
         ],
     },
     entry_points={
@@ -123,7 +134,7 @@ setup(
     zip_safe=False,
     keywords=[
         "satellite",
-        "imagery", 
+        "imagery",
         "planet",
         "planetscope",
         "geospatial",

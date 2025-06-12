@@ -4,7 +4,7 @@ This package contains comprehensive tests for all components of the planetscope-
 
 Test Structure:
     - test_auth.py: Authentication system tests
-    - test_config.py: Configuration management tests  
+    - test_config.py: Configuration management tests
     - test_utils.py: Core utility function tests
     - test_exceptions.py: Exception handling tests
     - conftest.py: Shared fixtures and pytest configuration
@@ -18,14 +18,14 @@ Test Categories:
 Usage:
     # Run all tests
     pytest
-    
+
     # Run specific test categories
     pytest -m "unit"
     pytest -m "auth"
-    
+
     # Run with coverage
     pytest --cov=planetscope_py --cov-report=html
-    
+
     # Run specific test file
     pytest tests/test_auth.py
 """
