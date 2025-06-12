@@ -1,13 +1,129 @@
-"""Pytest configuration and shared fixtures for planetscope-py tests."""
+"""
+Pytest configuration and shared fixtures for planetscope-py tests.
+
+PERMANENT WINDOWS FIX: This completely overrides pytest's temp directory
+behavior to avoid Windows username whitespace permission issues.
+"""
 
 import json
+import os
+import sys
+import tempfile
+import shutil
 from pathlib import Path
-from unittest.mock import Mock, patch
-
+from typing import Generator, Dict, Any
+from unittest.mock import Mock, patch, MagicMock
 import pytest
+
+# Add the parent directory to the Python path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from planetscope_py.config import PlanetScopeConfig
 
+
+# =====================================================
+# PERMANENT WINDOWS FIX - Override pytest's tmp_path
+# =====================================================
+
+def pytest_configure(config):
+    """Configure pytest with Windows compatibility fixes."""
+    # Force project-local temp directory
+    project_root = Path(__file__).parent.parent
+    temp_base = project_root / ".pytest_temp"
+    
+    # Ensure it exists
+    temp_base.mkdir(exist_ok=True)
+    
+    # Override all temp-related environment variables
+    os.environ["TMPDIR"] = str(temp_base)
+    os.environ["TMP"] = str(temp_base) 
+    os.environ["TEMP"] = str(temp_base)
+    
+    # Configure markers
+    config.addinivalue_line("markers", "unit: Unit tests for individual functions")
+    config.addinivalue_line("markers", "integration: Integration tests for multiple components")
+    config.addinivalue_line("markers", "auth: Authentication-related tests")
+    config.addinivalue_line("markers", "validation: Input validation tests")
+    config.addinivalue_line("markers", "slow: Slow-running tests")
+    config.addinivalue_line("markers", "network: Tests that require network access")
+    config.addinivalue_line("markers", "config: Configuration tests")
+    config.addinivalue_line("markers", "utils: Utility tests")
+    config.addinivalue_line("markers", "exceptions: Exception tests")
+
+
+@pytest.fixture
+def tmp_path(request):
+    """
+    COMPLETE OVERRIDE of pytest's tmp_path fixture.
+    
+    This completely bypasses pytest's temp directory logic that causes
+    Windows permission issues with usernames containing spaces.
+    """
+    import uuid
+    
+    # Use project-local temp directory
+    project_root = Path(__file__).parent.parent
+    base_temp = project_root / ".pytest_temp"
+    base_temp.mkdir(exist_ok=True)
+    
+    # Create unique directory for this test
+    test_name = request.node.name
+    safe_test_name = "".join(c for c in test_name if c.isalnum() or c in '-_')
+    unique_id = uuid.uuid4().hex[:8]
+    
+    temp_dir = base_temp / f"{safe_test_name}_{unique_id}"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    
+    yield temp_dir
+    
+    # Cleanup
+    try:
+        if temp_dir.exists():
+            shutil.rmtree(temp_dir)
+    except (OSError, PermissionError):
+        # If cleanup fails, leave it - it's in .gitignore
+        pass
+
+
+@pytest.fixture
+def tmp_path_factory(request):
+    """
+    COMPLETE OVERRIDE of pytest's tmp_path_factory fixture.
+    
+    This ensures all temporary directory creation goes through our
+    project-local directory system.
+    """
+    class SafeTmpPathFactory:
+        def __init__(self):
+            self.project_root = Path(__file__).parent.parent
+            self.base_temp = self.project_root / ".pytest_temp"
+            self.base_temp.mkdir(exist_ok=True)
+            self._counter = 0
+        
+        def mktemp(self, basename="tmp", numbered=True):
+            """Create a temporary directory."""
+            import uuid
+            
+            if numbered:
+                self._counter += 1
+                dir_name = f"{basename}_{self._counter}_{uuid.uuid4().hex[:6]}"
+            else:
+                dir_name = f"{basename}_{uuid.uuid4().hex[:8]}"
+            
+            temp_dir = self.base_temp / dir_name
+            temp_dir.mkdir(parents=True, exist_ok=True)
+            return temp_dir
+        
+        def getbasetemp(self):
+            """Get the base temp directory."""
+            return self.base_temp
+    
+    return SafeTmpPathFactory()
+
+
+# =====================================================
+# AUTHENTICATION AND CONFIGURATION FIXTURES
+# =====================================================
 
 @pytest.fixture
 def sample_api_key():
@@ -16,9 +132,32 @@ def sample_api_key():
 
 
 @pytest.fixture
+def mock_config():
+    """Provide a mock configuration for testing."""
+    config = PlanetScopeConfig()
+    config.set("max_retries", 2)
+    config.set("max_roi_area_km2", 1000)
+    return config
+
+
+@pytest.fixture
+def sample_config_file_content():
+    """Provide sample config file content."""
+    return json.dumps({
+        "api_key": "config_file_api_key",
+        "base_url": "https://api.planet.com/data/v1",
+        "max_retries": 5,
+    })
+
+
+# =====================================================
+# GEOMETRY FIXTURES
+# =====================================================
+
+@pytest.fixture
 def sample_point_geometry():
     """Provide a sample Point geometry."""
-    return {"type": "Point", "coordinates": [-122.4194, 37.7749]}  # San Francisco
+    return {"type": "Point", "coordinates": [-122.4194, 37.7749]}
 
 
 @pytest.fixture
@@ -41,7 +180,6 @@ def sample_polygon_geometry():
 @pytest.fixture
 def sample_large_polygon():
     """Provide a large polygon that exceeds size limits."""
-    # Create a large polygon covering roughly 100x100 degree area
     return {
         "type": "Polygon",
         "coordinates": [[[-50, -50], [50, -50], [50, 50], [-50, 50], [-50, -50]]],
@@ -54,32 +192,66 @@ def sample_invalid_geometry():
     return {
         "type": "Polygon",
         "coordinates": [
-            [[0, 0], [1, 0], [1, 1]]  # Not closed - missing final coordinate
+            [[0, 0], [1, 0], [1, 1]]  # Not closed
         ],
     }
 
 
+# =====================================================
+# SAFE FILE FIXTURES
+# =====================================================
+
 @pytest.fixture
-def sample_config_file_content():
-    """Provide sample config file content."""
-    return json.dumps(
-        {
-            "api_key": "config_file_api_key",
-            "base_url": "https://api.planet.com/data/v1",
-            "max_retries": 5,
-        }
+def temp_config_file(tmp_path, sample_config_file_content):
+    """Create a temporary config file using our safe tmp_path."""
+    config_file = tmp_path / "planet_config.json"
+    config_file.write_text(sample_config_file_content)
+    return config_file
+
+
+@pytest.fixture
+def mock_home_config(monkeypatch, sample_config_file_content):
+    """Mock ~/.planet.json config file."""
+    mock_path = Mock()
+    mock_path.exists.return_value = True
+
+    monkeypatch.setattr(
+        "pathlib.Path.home", 
+        lambda: Mock(__truediv__=lambda self, other: mock_path)
     )
 
+    mock_open_func = Mock()
+    mock_open_func.return_value.__enter__ = Mock(
+        return_value=Mock(read=Mock(return_value=sample_config_file_content))
+    )
+    mock_open_func.return_value.__exit__ = Mock(return_value=None)
 
-@pytest.fixture
-def mock_config():
-    """Provide a mock configuration for testing."""
-    config = PlanetScopeConfig()
-    # Override some values for testing
-    config.set("max_retries", 2)
-    config.set("max_roi_area_km2", 1000)
-    return config
+    monkeypatch.setattr("builtins.open", mock_open_func)
+    return mock_path
 
+
+# =====================================================
+# ENVIRONMENT CLEANUP
+# =====================================================
+
+@pytest.fixture(autouse=True)
+def clean_environment(monkeypatch):
+    """Clean environment variables before each test."""
+    env_vars_to_remove = [
+        "PL_API_KEY",
+        "PLANET_API_KEY", 
+        "PLANETSCOPE_BASE_URL",
+        "PLANETSCOPE_MAX_RETRIES",
+        "PLANETSCOPE_LOG_LEVEL",
+    ]
+
+    for var in env_vars_to_remove:
+        monkeypatch.delenv(var, raising=False)
+
+
+# =====================================================
+# HTTP RESPONSE MOCKS
+# =====================================================
 
 @pytest.fixture
 def mock_successful_response():
@@ -114,6 +286,10 @@ def mock_rate_limit_response():
     return response
 
 
+# =====================================================
+# PLANET API DATA FIXTURES
+# =====================================================
+
 @pytest.fixture
 def sample_search_results():
     """Provide sample Planet API search results."""
@@ -147,35 +323,7 @@ def sample_search_results():
                     "_self": "https://api.planet.com/data/v1/item-types/PSScene/items/20250101_123456_78_9abc",
                     "assets": "https://api.planet.com/data/v1/item-types/PSScene/items/20250101_123456_78_9abc/assets",
                 },
-            },
-            {
-                "id": "20250102_654321_87_cba9",
-                "type": "Feature",
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [
-                        [
-                            [-122.6, 37.6],
-                            [-122.5, 37.6],
-                            [-122.5, 37.7],
-                            [-122.6, 37.7],
-                            [-122.6, 37.6],
-                        ]
-                    ],
-                },
-                "properties": {
-                    "item_type": "PSScene",
-                    "acquired": "2025-01-02T09:15:30.000Z",
-                    "cloud_cover": 0.05,
-                    "pixel_resolution": 3.0,
-                    "strip_id": "654321",
-                },
-                "_permissions": ["assets.basic_analytic_4b:download"],
-                "_links": {
-                    "_self": "https://api.planet.com/data/v1/item-types/PSScene/items/20250102_654321_87_cba9",
-                    "assets": "https://api.planet.com/data/v1/item-types/PSScene/items/20250102_654321_87_cba9/assets",
-                },
-            },
+            }
         ],
     }
 
@@ -193,84 +341,17 @@ def sample_asset_info():
                 "download": "https://api.planet.com/data/v1/item-types/PSScene/items/test/assets/ortho_analytic_4b/download",
             },
             "location": "https://storage.googleapis.com/download-url/ortho_analytic_4b.tif",
-        },
-        "ortho_analytic_4b_xml": {
-            "status": "active",
-            "type": "text/xml",
-            "_links": {
-                "_self": "https://api.planet.com/data/v1/item-types/PSScene/items/test/assets/ortho_analytic_4b_xml",
-                "activate": "https://api.planet.com/data/v1/item-types/PSScene/items/test/assets/ortho_analytic_4b_xml/activate",
-                "download": "https://api.planet.com/data/v1/item-types/PSScene/items/test/assets/ortho_analytic_4b_xml/download",
-            },
-            "location": "https://storage.googleapis.com/download-url/ortho_analytic_4b_metadata.xml",
-        },
+        }
     }
 
 
-@pytest.fixture(autouse=True)
-def clean_environment(monkeypatch):
-    """Clean environment variables before each test."""
-    # Remove Planet-related environment variables
-    env_vars_to_remove = [
-        "PL_API_KEY",
-        "PLANETSCOPE_BASE_URL",
-        "PLANETSCOPE_MAX_RETRIES",
-        "PLANETSCOPE_LOG_LEVEL",
-    ]
+# =====================================================
+# UTILITY FUNCTIONS
+# =====================================================
 
-    for var in env_vars_to_remove:
-        monkeypatch.delenv(var, raising=False)
-
-
-@pytest.fixture
-def temp_config_file(tmp_path, sample_config_file_content):
-    """Create a temporary config file."""
-    config_file = tmp_path / "planet_config.json"
-    config_file.write_text(sample_config_file_content)
-    return config_file
-
-
-@pytest.fixture
-def mock_home_config(monkeypatch, sample_config_file_content):
-    """Mock ~/.planet.json config file."""
-    mock_path = Mock()
-    mock_path.exists.return_value = True
-
-    # Mock pathlib.Path.home() to return our mock path
-    monkeypatch.setattr(
-        "pathlib.Path.home", lambda: Mock(__truediv__=lambda self, other: mock_path)
-    )
-
-    # Mock open to return our config content
-    mock_open_func = Mock()
-    mock_open_func.return_value.__enter__ = Mock(
-        return_value=Mock(read=Mock(return_value=sample_config_file_content))
-    )
-    mock_open_func.return_value.__exit__ = Mock(return_value=None)
-
-    monkeypatch.setattr("builtins.open", mock_open_func)
-
-    return mock_path
-
-
-# Custom pytest markers for different test categories
-def pytest_configure(config):
-    """Configure custom pytest markers."""
-    config.addinivalue_line("markers", "unit: Unit tests for individual functions")
-    config.addinivalue_line(
-        "markers", "integration: Integration tests for multiple components"
-    )
-    config.addinivalue_line("markers", "auth: Authentication-related tests")
-    config.addinivalue_line("markers", "validation: Input validation tests")
-    config.addinivalue_line("markers", "slow: Slow-running tests")
-
-
-# Test utilities
 def assert_valid_geometry(geometry):
     """Helper to assert geometry is valid."""
     from planetscope_py.utils import validate_geometry
-
-    # Should not raise exception
     validated = validate_geometry(geometry)
     assert validated == geometry
 
@@ -278,6 +359,10 @@ def assert_valid_geometry(geometry):
 def assert_raises_validation_error(func, *args, **kwargs):
     """Helper to assert function raises ValidationError."""
     from planetscope_py.exceptions import ValidationError
-
     with pytest.raises(ValidationError):
         func(*args, **kwargs)
+
+
+# Test constants
+TEST_API_KEY = "pl_test_key_12345_abcdef"
+TEST_BASE_URL = "https://api.planet.com/data/v1"
