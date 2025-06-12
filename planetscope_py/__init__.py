@@ -21,12 +21,16 @@ Example usage:
     density = client.calculate_density(scenes, resolution=30)
 """
 
-
 from ._version import __version__
 from .auth import PlanetAuth
 from .config import PlanetScopeConfig
-from .exceptions import (APIError, AuthenticationError, PlanetScopeError,
-                         RateLimitError, ValidationError)
+from .exceptions import (
+    APIError,
+    AuthenticationError,
+    PlanetScopeError,
+    RateLimitError,
+    ValidationError,
+)
 
 __all__ = [
     "__version__",
