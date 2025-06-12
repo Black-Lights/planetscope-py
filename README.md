@@ -173,7 +173,7 @@ geometry = {
 validate_geometry(geometry)
 
 # Validate date range
-start_date, end_date = validate_date_range("2025-01-01", "2025-12-31")
+start_date, end_date = validate_date_range("2025-01-01", "2025-01-31")
 
 # Validate cloud cover
 cloud_cover = validate_cloud_cover(0.15)  # 15%
