@@ -44,8 +44,18 @@ pip install planetscope-py
 
 ### Development Installation
 ```bash
+# Clone the repository
 git clone https://github.com/Black-Lights/planetscope-py.git
 cd planetscope-py
+
+# Create and activate a virtual environment (recommended)
+python -m venv myvenv
+# On Windows:
+myvenv\Scripts\activate
+# On macOS/Linux:
+source myvenv/bin/activate
+
+# Install the package in editable mode and dev requirements
 pip install -e .
 pip install -r requirements-dev.txt
 ```
