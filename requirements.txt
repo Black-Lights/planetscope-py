@@ -1,0 +1,23 @@
+# Core dependencies for planetscope-py (Production)
+# Updated: June 2025 with latest compatible versions
+
+# HTTP requests (latest stable)
+requests>=2.32.4
+
+# Geometric operations (latest with NumPy 2.x support)
+shapely>=2.1.0
+
+# Coordinate transformations (latest stable)
+pyproj>=3.7.1
+
+# Numerical computing (latest stable - NumPy 2.x)
+numpy>=2.2.0
+
+# Data manipulation (latest with NumPy 2.x compatibility)
+pandas>=2.2.3
+
+# Date/time handling
+python-dateutil>=2.9.0
+
+# JSON processing (optional, faster alternative)
+orjson>=3.10.0
