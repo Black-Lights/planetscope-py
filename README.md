@@ -5,7 +5,7 @@ A professional Python library for PlanetScope satellite imagery analysis, provid
 ## Status
 
 **Current Phase**: Phase 2 Complete (Planet API Integration)  
-**Test Coverage**: 249/249 tests passing (100%)  
+**Test Coverage**: 255/255 tests passing (100%)  
 **API Integration**: Fully functional with real Planet API  
 **Python Support**: 3.10+  
 **License**: MIT  

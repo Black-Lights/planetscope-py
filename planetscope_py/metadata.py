@@ -168,6 +168,7 @@ class MetadataProcessor:
                     usable_data = float(usable_data)
             except (TypeError, ValueError):
                 usable_data = None
+                
             
             metadata.update({
                 "cloud_cover": cloud_cover,
@@ -641,8 +642,9 @@ class MetadataProcessor:
             cloud_cover = metadata.get("cloud_cover")
             usable_data = metadata.get("usable_data")
             
+            # Check if we have both values (preferred method)
             if (cloud_cover is not None and usable_data is not None and 
-                isinstance(cloud_cover, (int, float)) and isinstance(usable_data, (int, float))):
+            isinstance(cloud_cover, (int, float)) and isinstance(usable_data, (int, float))):
                 
                 cloud_cover = float(cloud_cover)
                 usable_data = float(usable_data)
@@ -652,6 +654,20 @@ class MetadataProcessor:
                 elif cloud_cover <= 0.2 and usable_data >= 0.8:
                     derived["suitability"] = "good"
                 elif cloud_cover <= 0.4 and usable_data >= 0.7:
+                    derived["suitability"] = "fair"
+                else:
+                    derived["suitability"] = "poor"
+                    
+            # Fallback: Use cloud cover alone if usable_data is missing
+            elif cloud_cover is not None and isinstance(cloud_cover, (int, float)):
+                cloud_cover = float(cloud_cover)
+                
+                # More lenient thresholds since we only have cloud cover
+                if cloud_cover <= 0.05:
+                    derived["suitability"] = "excellent"
+                elif cloud_cover <= 0.15:
+                    derived["suitability"] = "good"
+                elif cloud_cover <= 0.30:
                     derived["suitability"] = "fair"
                 else:
                     derived["suitability"] = "poor"

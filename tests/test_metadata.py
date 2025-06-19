@@ -169,13 +169,56 @@ class TestMetadataProcessor:
         # Check solar conditions (45.2° elevation = optimal)
         assert metadata["solar_conditions"] == "optimal"
         
-        # Check suitability (low cloud cover + high usable data = excellent)
-        assert metadata["suitability"] == "good"  # 0.15 cloud cover, 0.92 usable data
+        # Check suitability - UPDATED FOR NEW LOGIC
+        # Sample scene has: cloud_cover=0.15, usable_data=0.92
+        # With combined logic: cloud_cover <= 0.2 AND usable_data >= 0.8 = "good"
+        assert metadata["suitability"] == "good"  # This should still be correct
         
         # Check quality scores
         assert "quality_scores" in metadata
         assert "overall_quality" in metadata
         assert metadata["overall_quality"] > 0.8  # Should be high quality
+
+    def test_extract_scene_metadata_missing_usable_data(self, processor):
+        """Test metadata extraction when usable_data is missing (real Planet API scenario)."""
+        # Create a scene similar to Milan example
+        scene_missing_usable_data = {
+            "type": "Feature",
+            "id": "milan_scene_example",
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [8.55, 45.91], [9.83, 45.91],
+                    [9.83, 45.02], [8.55, 45.02], [8.55, 45.91]
+                ]]
+            },
+            "properties": {
+                "id": "milan_scene_example",
+                "item_type": "PSScene",
+                "acquired": "2024-08-24T10:32:08.000Z",
+                "cloud_cover": 0.0,  # Perfect conditions
+                "sun_elevation": 53.9,
+                "clear_percent": 100,  # Planet API provides this
+                "visible_percent": 100,  # But not usable_data
+                # Note: no usable_data field
+            }
+        }
+        
+        metadata = processor.extract_scene_metadata(scene_missing_usable_data)
+        
+        # Verify extracted values
+        assert metadata["cloud_cover"] == 0.0
+        assert metadata["usable_data"] is None  # Should be None since not in Planet API
+        assert metadata["sun_elevation"] == 53.9
+        assert metadata["month"] == 8  # August
+        
+        # Verify derived metrics use fallback logic
+        assert metadata["season"] == "summer"
+        assert metadata["solar_conditions"] == "optimal"
+        assert metadata["suitability"] == "excellent"  # Should use cloud_cover fallback
+        
+        # Quality should still be calculated properly
+        assert metadata["overall_quality"] > 0.9  # Should be very high
     
     def test_extract_scene_metadata_geometry(self, processor, sample_scene):
         """Test geometry metadata extraction."""
@@ -576,6 +619,144 @@ class TestMetadataProcessor:
         assert processed["interval"] == "month"
         assert len(processed["temporal_distribution"]) == 3
         assert processed["temporal_distribution"]["2024-01-01T00:00:00Z"] == 15
+
+    def test_suitability_cloud_cover_fallback(self, processor):
+        """Test suitability classification using cloud cover fallback logic when usable_data is missing."""
+        
+        # Test excellent classification (cloud_cover <= 0.05)
+        excellent_cloud_only = {"cloud_cover": 0.00, "usable_data": None}
+        result = processor._calculate_derived_metrics(excellent_cloud_only)
+        assert result["suitability"] == "excellent"
+        
+        excellent_cloud_boundary = {"cloud_cover": 0.05, "usable_data": None}
+        result = processor._calculate_derived_metrics(excellent_cloud_boundary)
+        assert result["suitability"] == "excellent"
+        
+        # Test good classification (0.05 < cloud_cover <= 0.15)
+        good_cloud_low = {"cloud_cover": 0.06, "usable_data": None}
+        result = processor._calculate_derived_metrics(good_cloud_low)
+        assert result["suitability"] == "good"
+        
+        good_cloud_boundary = {"cloud_cover": 0.15, "usable_data": None}
+        result = processor._calculate_derived_metrics(good_cloud_boundary)
+        assert result["suitability"] == "good"
+        
+        # Test fair classification (0.15 < cloud_cover <= 0.30)
+        fair_cloud_low = {"cloud_cover": 0.16, "usable_data": None}
+        result = processor._calculate_derived_metrics(fair_cloud_low)
+        assert result["suitability"] == "fair"
+        
+        fair_cloud_boundary = {"cloud_cover": 0.30, "usable_data": None}
+        result = processor._calculate_derived_metrics(fair_cloud_boundary)
+        assert result["suitability"] == "fair"
+        
+        # Test poor classification (cloud_cover > 0.30)
+        poor_cloud = {"cloud_cover": 0.31, "usable_data": None}
+        result = processor._calculate_derived_metrics(poor_cloud)
+        assert result["suitability"] == "poor"
+        
+        poor_cloud_high = {"cloud_cover": 0.80, "usable_data": None}
+        result = processor._calculate_derived_metrics(poor_cloud_high)
+        assert result["suitability"] == "poor"
+
+    def test_suitability_edge_cases(self, processor):
+        """Test suitability classification edge cases and error handling."""
+        
+        # Test with both cloud_cover and usable_data as None
+        no_data = {"cloud_cover": None, "usable_data": None}
+        result = processor._calculate_derived_metrics(no_data)
+        assert result["suitability"] == "unknown"
+        
+        # Test with cloud_cover as string (should be unknown)
+        invalid_cloud_cover = {"cloud_cover": "0.05", "usable_data": None}
+        result = processor._calculate_derived_metrics(invalid_cloud_cover)
+        assert result["suitability"] == "unknown"
+        
+        # Test with cloud_cover as negative (should still work)
+        negative_cloud = {"cloud_cover": -0.01, "usable_data": None}
+        result = processor._calculate_derived_metrics(negative_cloud)
+        assert result["suitability"] == "excellent"  # Should still process
+        
+        # Test with cloud_cover > 1.0 (should be poor)
+        extreme_cloud = {"cloud_cover": 1.5, "usable_data": None}
+        result = processor._calculate_derived_metrics(extreme_cloud)
+        assert result["suitability"] == "poor"
+
+    def test_suitability_real_planet_api_scenarios(self, processor):
+        """Test suitability with realistic Planet API data scenarios."""
+        
+        # Scenario 1: Milan example - excellent conditions
+        milan_scene = {
+            "cloud_cover": 0.0,
+            "usable_data": None,  # Missing from Planet API
+            "sun_elevation": 53.9,
+            "month": 8
+        }
+        result = processor._calculate_derived_metrics(milan_scene)
+        assert result["suitability"] == "excellent"
+        assert result["solar_conditions"] == "optimal"
+        assert result["season"] == "summer"
+        
+        # Scenario 2: Slightly cloudy scene
+        cloudy_scene = {
+            "cloud_cover": 0.08,
+            "usable_data": None,
+            "sun_elevation": 45.0,
+            "month": 6
+        }
+        result = processor._calculate_derived_metrics(cloudy_scene)
+        assert result["suitability"] == "good"
+        
+        # Scenario 3: Moderately cloudy scene
+        moderate_scene = {
+            "cloud_cover": 0.25,
+            "usable_data": None,
+            "sun_elevation": 40.0,
+            "month": 3
+        }
+        result = processor._calculate_derived_metrics(moderate_scene)
+        assert result["suitability"] == "fair"
+
+    def test_suitability_combined_vs_fallback_logic(self, processor):
+        """Test that combined logic takes precedence over fallback when usable_data is available."""
+        
+        # When both are available, should use combined logic
+        combined_data = {"cloud_cover": 0.18, "usable_data": 0.85}  # Would be "good" in combined
+        result = processor._calculate_derived_metrics(combined_data)
+        assert result["suitability"] == "good"  # Combined: cloud_cover <= 0.2 AND usable_data >= 0.8
+        
+        # When usable_data is missing, should use fallback logic  
+        fallback_data = {"cloud_cover": 0.18, "usable_data": None}  # Would be "fair" in fallback
+        result = processor._calculate_derived_metrics(fallback_data)
+        assert result["suitability"] == "fair"  # Fallback: 0.15 < cloud_cover <= 0.30
+        
+        # Verify the difference between combined and fallback thresholds
+        edge_case = {"cloud_cover": 0.12, "usable_data": 0.75}  # usable_data too low for "good"
+        result = processor._calculate_derived_metrics(edge_case)
+        assert result["suitability"] == "fair"  # Combined logic: doesn't meet "good" criteria
+        
+        edge_case_fallback = {"cloud_cover": 0.12, "usable_data": None}
+        result = processor._calculate_derived_metrics(edge_case_fallback)
+        assert result["suitability"] == "good"  # Fallback logic: cloud_cover <= 0.15
+
+    def test_planet_api_field_substitution(self, processor):
+        """Test using Planet API alternative fields when usable_data is missing."""
+        
+        # This test assumes you might implement clear_percent substitution
+        # If you decide to use clear_percent as substitute for usable_data
+        
+        # Test that clear_percent could be used (if implemented)
+        planet_data = {
+            "cloud_cover": 0.0,
+            "usable_data": None,
+            "clear_percent": 100,  # Planet API field
+            "visible_percent": 100,  # Planet API field
+            "clear_confidence_percent": 97  # Planet API field
+        }
+        
+        # For now, this should use fallback logic
+        result = processor._calculate_derived_metrics(planet_data)
+        assert result["suitability"] == "excellent"  # Based on cloud_cover fallback
 
 
 class TestQualityAssessment:
