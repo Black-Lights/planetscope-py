@@ -176,26 +176,22 @@ phase2_readiness.py
 phase*.py
 
 # Temporary test files (duplicates of main test suite)
-temp_test_auth.py
-temp_test_basic_api.py
-temp_test_complete.py
-temp_test_config_fixed.py
-temp_test_config.py
-temp_test_exceptions.py
-temp_test_imports.py
-temp_test_utils.py
 debug_*.py
 run_*.py
 final_*.py
+temp_*.ipynb
+temp_*.py
 
 # Development and debugging files
 debug_failures.py
 *_debug.py
 *_temp.py
+*_temp.ipynb
+
 
 # Changelog and development notes (keep main CHANGELOG.md)
-CHANGELOG.md
-changelog.md
+# CHANGELOG.md
+# changelog.md
 
 # Virtual environment variations
 .pytest_cache/

@@ -4,8 +4,9 @@ A professional Python library for PlanetScope satellite imagery analysis, provid
 
 ## Status
 
-**Current Phase**: Phase 1 Complete (Foundation)  
-**Test Coverage**: 147/147 tests passing (100%)  
+**Current Phase**: Phase 2 Complete (Planet API Integration)  
+**Test Coverage**: 249/249 tests passing (100%)  
+**API Integration**: Fully functional with real Planet API  
 **Python Support**: 3.10+  
 **License**: MIT  
 
@@ -23,17 +24,30 @@ PlanetScope-py is designed for remote sensing researchers, GIS analysts, and Ear
 - **Security**: API key masking, secure session management, and credential protection
 - **Cross-Platform**: Full compatibility with Windows, macOS, and Linux environments
 
-### Phase 2: Planet API Integration (In Development)
-- Scene discovery and search functionality
-- Metadata processing and analysis
-- Rate limiting and retry strategies
-- API response caching and optimization
+### Phase 2: Planet API Integration (Complete)
+- **Scene Discovery**: Robust search functionality with advanced filtering capabilities
+- **Metadata Processing**: Comprehensive scene metadata extraction and analysis
+- **Rate Limiting**: Intelligent rate limiting with exponential backoff and retry logic
+- **API Response Handling**: Optimized response caching and pagination support
+- **Date Formatting**: Planet API compliant date formatting with end-of-day handling
+- **Geometry Validation**: Multi-format geometry support (GeoJSON, Shapely, WKT)
+- **Batch Operations**: Support for multiple geometry searches with parallel processing
+- **Quality Assessment**: Scene filtering based on cloud cover, sun elevation, and quality metrics
+- **Preview Support**: Scene preview URL generation for visual inspection
+- **Real-World Testing**: Verified with actual Planet API calls and data retrieval
 
-### Phase 3: Spatial Analysis (Planned)
+### Phase 3: Spatial Analysis Engine (In Development)
 - Spatial density calculations with multiple algorithms
 - Temporal pattern analysis and gap detection
 - Grid compatibility and coordinate system support
 - Advanced coverage statistics
+
+### Phase 4: Visualization and Export (Planned)
+- Interactive mapping and visualization
+- Timeline and density plotting
+- Export capabilities (GeoJSON, CSV, GeoTIFF)
+- Report generation and documentation
+- Integration with GIS software
 
 ## Installation
 
@@ -95,23 +109,88 @@ Get your Planet API key from [Planet Account Settings](https://www.planet.com/ac
 
 ## Quick Start
 
+### Basic Scene Search
 ```python
-from planetscope_py import PlanetAuth, PlanetScopeConfig
+from planetscope_py import PlanetScopeQuery
 
-# Initialize authentication (auto-detects API key)
-auth = PlanetAuth()
-print(f"Authentication successful: {auth.is_authenticated}")
+# Initialize query system (automatically detects API key)
+query = PlanetScopeQuery()
 
-# Get authenticated session for API calls
-session = auth.get_session()
-response = session.get("https://api.planet.com/data/v1/")
-print(f"Planet API status: {response.status_code}")
+# Define area of interest (example: Milan, Italy)
+milan_geometry = {
+    "type": "Point",
+    "coordinates": [9.1900, 45.4642]  # [longitude, latitude]
+}
 
-# Access configuration settings
-config = PlanetScopeConfig()
-print(f"Base URL: {config.base_url}")
-print(f"Rate limits: {config.rate_limits}")
-print(f"Default CRS: {config.to_dict()['default_crs']}")
+# Search for scenes
+results = query.search_scenes(
+    geometry=milan_geometry,
+    start_date="2025-01-01",
+    end_date="2025-01-31",
+    cloud_cover_max=0.2,  # 20% maximum cloud cover
+    item_types=["PSScene"]
+)
+
+# Check results
+print(f"Found {len(results['features'])} scenes")
+
+# Access scene metadata
+for scene in results['features'][:3]:  # First 3 scenes
+    props = scene['properties']
+    print(f"Scene ID: {scene['id']}")
+    print(f"Date: {props['acquired']}")
+    print(f"Cloud Cover: {props['cloud_cover']:.1%}")
+```
+
+### Advanced Usage with Metadata Processing
+```python
+from planetscope_py import PlanetScopeQuery, MetadataProcessor
+from planetscope_py.utils import validate_geometry, calculate_area_km2
+
+# Create a 100km x 100km polygon around Milan
+milan_polygon = {
+    "type": "Polygon",
+    "coordinates": [[
+        [8.55, 45.91],   # Northwest
+        [9.83, 45.91],   # Northeast  
+        [9.83, 45.02],   # Southeast
+        [8.55, 45.02],   # Southwest
+        [8.55, 45.91]    # Close polygon
+    ]]
+}
+
+# Validate geometry and calculate area
+validated_geom = validate_geometry(milan_polygon)
+area_km2 = calculate_area_km2(validated_geom)
+print(f"Search area: {area_km2:.2f} km²")
+
+# Advanced search with multiple filters
+query = PlanetScopeQuery()
+results = query.search_scenes(
+    geometry=milan_polygon,
+    start_date="2024-06-01", 
+    end_date="2024-08-31",
+    cloud_cover_max=0.20,
+    sun_elevation_min=25,
+    item_types=["PSScene"]
+)
+
+# Process metadata for quality assessment
+processor = MetadataProcessor()
+assessment = processor.assess_coverage_quality(
+    scenes=results["features"],
+    target_geometry=milan_polygon
+)
+
+print(f"Total scenes: {assessment['total_scenes']}")
+
+# Safe access to assessment results
+if assessment['total_scenes'] > 0:
+    print(f"Quality analysis: {assessment['quality_analysis']}")
+else:
+    print("No scenes found for specified criteria")
+    
+print(f"Recommendations: {assessment['recommendations']}")
 ```
 
 ## Core Components
@@ -154,6 +233,74 @@ config.set('max_roi_area_km2', 15000)
 config_dict = config.to_dict()
 ```
 
+### Planet API Query System
+```python
+from planetscope_py import PlanetScopeQuery
+
+query = PlanetScopeQuery()
+
+# Scene search with comprehensive filtering
+results = query.search_scenes(
+    geometry=geometry,
+    start_date="2025-01-01",
+    end_date="2025-01-31",
+    cloud_cover_max=0.2,
+    sun_elevation_min=30,
+    item_types=["PSScene"]
+)
+
+# Get scene statistics
+stats = query.get_scene_stats(
+    geometry=geometry,
+    start_date="2025-01-01",
+    end_date="2025-01-31"
+)
+
+# Batch search across multiple geometries
+batch_results = query.batch_search(
+    geometries=[geom1, geom2, geom3],
+    start_date="2025-01-01",
+    end_date="2025-01-31"
+)
+
+# Filter scenes by quality criteria
+quality_scenes = query.filter_scenes_by_quality(
+    scenes=results['features'],
+    min_quality=0.7,
+    max_cloud_cover=0.15,
+    exclude_night=True
+)
+
+# Get scene preview URLs
+previews = query.get_scene_previews(["scene_id_1", "scene_id_2"])
+```
+
+### Metadata Processing
+```python
+from planetscope_py import MetadataProcessor
+
+processor = MetadataProcessor()
+
+# Extract comprehensive metadata from a scene
+metadata = processor.extract_scene_metadata(scene)
+
+# Assess coverage quality for a collection of scenes
+assessment = processor.assess_coverage_quality(
+    scenes=scenes,
+    target_geometry=roi_geometry
+)
+
+# Filter scenes based on metadata criteria
+filtered_scenes, stats = processor.filter_by_metadata_criteria(
+    scenes=scenes,
+    criteria={
+        "max_cloud_cover": 0.2,
+        "min_sun_elevation": 40.0,
+        "min_usable_data": 0.85
+    }
+)
+```
+
 ### Utility Functions
 ```python
 from planetscope_py.utils import (
@@ -172,7 +319,7 @@ geometry = {
 }
 validate_geometry(geometry)
 
-# Validate date range
+# Validate date range with proper Planet API formatting
 start_date, end_date = validate_date_range("2025-01-01", "2025-01-31")
 
 # Validate cloud cover
@@ -189,15 +336,23 @@ from planetscope_py.exceptions import (
     PlanetScopeError,
     AuthenticationError,
     ValidationError,
-    ConfigurationError
+    ConfigurationError,
+    APIError,
+    RateLimitError
 )
 
 try:
-    auth = PlanetAuth()
+    results = query.search_scenes(geometry, start_date, end_date)
 except AuthenticationError as e:
     print(f"Authentication failed: {e.message}")
     print(f"Available methods: {e.details.get('methods', [])}")
-    print(f"Help URL: {e.details.get('help_url', 'N/A')}")
+except ValidationError as e:
+    print(f"Validation error: {e.message}")
+    print(f"Details: {e.details}")
+except APIError as e:
+    print(f"API error: {e.message}")
+except RateLimitError as e:
+    print(f"Rate limit exceeded: {e.message}")
 except ConfigurationError as e:
     print(f"Configuration error: {e.message}")
     print(f"Details: {e.details}")
@@ -218,10 +373,13 @@ python -m pytest tests/test_auth.py -v
 python -m pytest tests/test_config.py -v
 python -m pytest tests/test_exceptions.py -v
 python -m pytest tests/test_utils.py -v
+python -m pytest tests/test_query.py -v
+python -m pytest tests/test_metadata.py -v
+python -m pytest tests/test_rate_limiter.py -v
 ```
 
 ### Test Coverage
-Current test coverage: **147/147 tests passing (100%)**
+Current test coverage: **249/249 tests passing (100%)**
 
 | Component | Tests | Status |
 |-----------|-------|--------|
@@ -229,6 +387,11 @@ Current test coverage: **147/147 tests passing (100%)**
 | Configuration | 21 | All passing |
 | Exceptions | 48 | All passing |
 | Utilities | 54 | All passing |
+| Planet API Query | 45+ | All passing |
+| Metadata Processing | 30+ | All passing |
+| Rate Limiting | 25+ | All passing |
+
+**Total: 249 tests with 99%+ coverage**
 
 ## Development Roadmap
 
@@ -240,21 +403,27 @@ Current test coverage: **147/147 tests passing (100%)**
 - 100% test coverage with professional testing practices
 - Security-first design with credential masking and protection
 
-### Phase 2: Planet API Integration (Next)
-- Scene discovery and search capabilities
-- Metadata extraction and processing
-- Rate limiting and request optimization
+### Phase 2: Planet API Integration (Complete)
+- Scene discovery and search capabilities with real API integration
+- Metadata extraction and processing with comprehensive analysis
+- Rate limiting and request optimization with retry logic
 - Response caching and pagination handling
 - Advanced filtering and selection tools
+- Date formatting with proper Planet API compliance
+- Geometry validation for multiple input formats
+- Batch operations for multiple geometries
+- Quality-based scene filtering
+- Preview URL generation
+- Comprehensive test suite with 249 tests
 
-### Phase 3: Spatial Analysis Engine
+### Phase 3: Spatial Analysis Engine (In Development)
 - Multi-algorithm spatial density calculations
 - Temporal pattern analysis and frequency assessment
 - Coverage gap detection and reporting
 - Grid system compatibility and alignment
 - Statistical analysis and quality metrics
 
-### Phase 4: Visualization and Export
+### Phase 4: Visualization and Export (Planned)
 - Interactive mapping and visualization
 - Timeline and density plotting
 - Export capabilities (GeoJSON, CSV, GeoTIFF)
@@ -303,10 +472,71 @@ PlanetScopeError (Base)
 └── AssetError            # Asset activation and download failures
 ```
 
+## Real-World Examples
+
+### Example 1: Milan Region Analysis
+```python
+# Search for scenes over Milan region in January 2025
+from planetscope_py import PlanetScopeQuery
+
+query = PlanetScopeQuery()
+
+# 100km x 100km area around Milan
+milan_geometry = {
+    "type": "Polygon", 
+    "coordinates": [[
+        [8.55, 45.91], [9.83, 45.91], [9.83, 45.02], [8.55, 45.02], [8.55, 45.91]
+    ]]
+}
+
+results = query.search_scenes(
+    geometry=milan_geometry,
+    start_date="2025-01-01",
+    end_date="2025-01-31", 
+    cloud_cover_max=0.2
+)
+
+print(f"Found {len(results['features'])} scenes over Milan")
+```
+
+### Example 2: Batch Processing Multiple ROIs
+```python
+# Process multiple regions simultaneously
+regions = [
+    {"type": "Point", "coordinates": [9.19, 45.46]},    # Milan
+    {"type": "Point", "coordinates": [11.26, 43.77]},   # Florence
+    {"type": "Point", "coordinates": [12.49, 41.90]}    # Rome
+]
+
+batch_results = query.batch_search(
+    geometries=regions,
+    start_date="2025-01-01", 
+    end_date="2025-01-15"
+)
+
+for i, result in enumerate(batch_results):
+    if result["success"]:
+        scenes = result["result"]["features"]
+        print(f"Region {i+1}: {len(scenes)} scenes found")
+```
+
+### Example 3: Quality-Based Filtering
+```python
+# Filter scenes by quality criteria
+high_quality_scenes = query.filter_scenes_by_quality(
+    scenes=search_results['features'],
+    min_quality=0.8,
+    max_cloud_cover=0.1,
+    exclude_night=True
+)
+
+print(f"High quality scenes: {len(high_quality_scenes)}")
+```
+
 ## Development
 
 ### Code Quality Standards
-- **Testing**: Comprehensive test coverage with pytest (147/147 tests passing)
+- **Testing**: Comprehensive test coverage with pytest (249/249 tests passing)
 - **Type Hints**: Progressive type annotation implementation with Python 3.10+ support
 - **Documentation**: Detailed docstrings and comprehensive README with examples
 - **Security**: Credential protection and secure error handling with API key masking
@@ -383,6 +613,20 @@ open _build/html/index.html
 - **Issues**: [GitHub Issues](https://github.com/Black-Lights/planetscope-py/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/Black-Lights/planetscope-py/discussions)
 - **Documentation**: [Project Wiki](https://github.com/Black-Lights/planetscope-py/wiki)
+
+## Citation
+
+If you use this library in your research, please cite:
+
+```bibtex
+@software{planetscope_py_2025,
+  title = {PlanetScope-py: Professional Python library for PlanetScope satellite imagery analysis},
+  author = {Ammar and Umayr},
+  year = {2025},
+  url = {https://github.com/Black-Lights/planetscope-py},
+  note = {Python library for satellite imagery analysis using Planet's Data API}
+}
+```
 
 ## License
 
