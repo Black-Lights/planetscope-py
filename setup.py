@@ -39,7 +39,7 @@ setup(
     url="https://github.com/Black-Lights/planetscope-py",
     packages=find_packages(),
     classifiers=[
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",  # UPDATED: Phase 2 is production-ready beta
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
         "Topic :: Scientific/Engineering :: GIS",
