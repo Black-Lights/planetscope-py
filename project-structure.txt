@@ -1,0 +1,50 @@
+planetscope-py
+├── CHANGELOG.md
+├── Examples
+│   ├── Simple_Milan_Search_Example.ipynb
+│   ├── milan_scenes_jan2025.json
+│   └── milan_search.ipynb
+├── LICENSE
+├── README.md
+├── debug_failures.py
+├── fixed_rate_limiter.py
+├── git-project-structure.txt
+├── phase1_completion.py
+├── phase2_readiness.py
+├── planetscope_py
+│   ├── __init__.py
+│   ├── _version.py
+│   ├── auth.py
+│   ├── config.py
+│   ├── exceptions.py
+│   ├── metadata.py
+│   ├── query.py
+│   ├── rate_limiter.py
+│   ├── utils.py
+│   └── utils.py.backup
+├── project-structure.txt
+├── pytest.ini
+├── requirements-dev.txt
+├── requirements.txt
+├── setup.py
+├── temp_setup_phase2_script.py
+├── temp_test_auth.py
+├── temp_test_basic_api.py
+├── temp_test_complete.py
+├── temp_test_config.py
+├── temp_test_config_fixed.py
+├── temp_test_exceptions.py
+├── temp_test_imports.py
+├── temp_test_notebook.ipynb
+├── temp_test_utils.py
+└── tests
+    ├── __init__.py
+    ├── conftest.py
+    ├── mock_planet_api.py
+    ├── test_auth.py
+    ├── test_config.py
+    ├── test_exceptions.py
+    ├── test_metadata.py
+    ├── test_query.py
+    ├── test_rate_limiter.py
+    └── test_utils.py
