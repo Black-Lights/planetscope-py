@@ -53,7 +53,10 @@ PlanetScope-py is designed for remote sensing researchers, GIS analysts, and Ear
 
 ### Standard Installation
 ```bash
+# Dont use this for now  (Not Release yet on pip)
 pip install planetscope-py
+# Use this instead to install in development mode
+pip install -e .[dev]
 ```
 
 ### Development Installation
