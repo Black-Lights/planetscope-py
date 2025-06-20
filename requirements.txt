@@ -3,6 +3,7 @@
 
 # HTTP requests (latest stable)
 requests>=2.32.4
+contextily>=1.6.2 # For basemaps in visualizations
 
 # Geometric operations (latest with NumPy 2.x support)
 shapely>=2.1.0

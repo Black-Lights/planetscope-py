@@ -205,3 +205,9 @@ pytest_cache/
 *_copy.py
 scratch*.py
 experimental*.py
+
+# Examples tets (keep main examples)
+milan_analysis/
+milan_3m_density.qml
+milan_3m_density.tif
+method_comparison/

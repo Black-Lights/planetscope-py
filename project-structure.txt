@@ -7,26 +7,48 @@ planetscope-py
 ├── LICENSE
 ├── README.md
 ├── debug_failures.py
-├── fixed_rate_limiter.py
-├── git-project-structure.txt
+├── method_comparison
+│   ├── adaptive_grid_50m.png
+│   ├── adaptive_grid_50m.qml
+│   ├── adaptive_grid_50m.tif
+│   ├── rasterization_50m.png
+│   ├── rasterization_50m.qml
+│   ├── rasterization_50m.tif
+│   ├── vector_overlay_50m.png
+│   ├── vector_overlay_50m.qml
+│   └── vector_overlay_50m.tif
+├── milan_3m_density.qml
+├── milan_3m_density.tif
+├── milan_analysis
+│   ├── milan_density.qml
+│   ├── milan_density.tif
+│   ├── milan_density_diagnostic.png
+│   ├── milan_density_fixed.tif
+│   ├── milan_summary.png
+│   └── test_density.tif
 ├── phase1_completion.py
 ├── phase2_readiness.py
 ├── planetscope_py
 │   ├── __init__.py
 │   ├── _version.py
+│   ├── adaptive_grid.py
 │   ├── auth.py
 │   ├── config.py
+│   ├── density_engine.py
 │   ├── exceptions.py
 │   ├── metadata.py
+│   ├── optimizer.py
 │   ├── query.py
 │   ├── rate_limiter.py
 │   ├── utils.py
-│   └── utils.py.backup
+│   ├── utils.py.backup
+│   └── visualization.py
 ├── project-structure.txt
 ├── pytest.ini
 ├── requirements-dev.txt
 ├── requirements.txt
 ├── setup.py
+├── temp_fixed_rate_limiter.py
 ├── temp_setup_phase2_script.py
 ├── temp_test_auth.py
 ├── temp_test_basic_api.py
@@ -37,6 +59,7 @@ planetscope-py
 ├── temp_test_imports.py
 ├── temp_test_notebook.ipynb
 ├── temp_test_utils.py
+├── temp_tests_phase3.ipynb
 └── tests
     ├── __init__.py
     ├── conftest.py
@@ -47,4 +70,5 @@ planetscope-py
     ├── test_metadata.py
     ├── test_query.py
     ├── test_rate_limiter.py
+    ├── test_suite.py
     └── test_utils.py
