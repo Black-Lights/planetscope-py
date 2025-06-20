@@ -33,17 +33,18 @@ setup(
     version=version_info["__version__"],
     author="Ammar & Umayr",
     author_email="mohammadammarmughees@gmail.com",
-    description="Professional Python library for PlanetScope satellite imagery analysis",
+    description="Professional Python library for PlanetScope satellite imagery analysis with spatial density calculations",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/Black-Lights/planetscope-py",
     packages=find_packages(),
     classifiers=[
-        "Development Status :: 4 - Beta",  # UPDATED: Phase 2 is production-ready beta
+        "Development Status :: 5 - Production/Stable",  # UPDATED: Spatial analysis is complete and stable
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
         "Topic :: Scientific/Engineering :: GIS",
         "Topic :: Scientific/Engineering :: Image Processing",
+        "Topic :: Scientific/Engineering :: Visualization",  # NEW: Added visualization support
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.10",
@@ -90,9 +91,10 @@ setup(
             "matplotlib>=3.10.0",
             "folium>=0.19.1",
         ],
-        "geospatial": [
+        "spatial": [  # RENAMED from "geospatial" to be more specific
             "geopandas>=1.0.1",
             "rasterio>=1.4.3",
+            "matplotlib>=3.10.0",  # Required for spatial analysis visualization
         ],
         "viz": [
             "matplotlib>=3.10.0",
@@ -142,11 +144,16 @@ setup(
         "earth-observation",
         "gis",
         "spatial-analysis",
+        "density-analysis",  # NEW: Added spatial analysis keywords
+        "rasterization",     # NEW: Core computational method
+        "vector-overlay",    # NEW: Core computational method
+        "adaptive-grid",     # NEW: Core computational method
+        "visualization",     # NEW: Visualization capabilities
     ],
     project_urls={
         "Bug Reports": "https://github.com/Black-Lights/planetscope-py/issues",
         "Source": "https://github.com/Black-Lights/planetscope-py",
-        "Documentation": "https://planetscope-py.readthedocs.io/",
+        "Documentation": "https://github.com/Black-Lights/planetscope-py/wiki",  # UPDATED: Point to wiki
         "Changelog": "https://github.com/Black-Lights/planetscope-py/blob/main/CHANGELOG.md",
     },
 )

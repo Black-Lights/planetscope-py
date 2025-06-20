@@ -2,11 +2,20 @@
 
 A professional Python library for PlanetScope satellite imagery analysis, providing comprehensive tools for scene discovery, metadata analysis, and spatial-temporal density calculations using Planet's Data API.
 
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Library Status](https://img.shields.io/badge/Library%20Status-Complete-green.svg)](#current-status)
+[![Spatial Analysis](https://img.shields.io/badge/Spatial%20Analysis-Complete-green.svg)](#spatial-analysis-engine-complete)
+[![Visualization](https://img.shields.io/badge/Visualization-Basic-yellow.svg)](#basic-visualization-current)
+[![Test Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](#testing)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 ## Status
 
-**Current Phase**: Phase 2 Complete (Planet API Integration)  
-**Test Coverage**: 255/255 tests passing (100%)  
+**Current Status**: Spatial Analysis Engine Complete  
+**Test Coverage**: 280/280 tests passing (100%)  
 **API Integration**: Fully functional with real Planet API  
+**Spatial Analysis**: Multi-algorithm density calculations complete  
+**Visualization**: Basic export and plotting (Phase 4 advanced features planned)  
 **Python Support**: 3.10+  
 **License**: MIT  
 
@@ -16,7 +25,7 @@ PlanetScope-py is designed for remote sensing researchers, GIS analysts, and Ear
 
 ## Features
 
-### Phase 1: Foundation (Complete)
+### Foundation (Complete)
 - **Authentication System**: Hierarchical API key detection with secure credential management
 - **Configuration Management**: Multi-source configuration with environment variable support
 - **Input Validation**: Comprehensive geometry, date, and parameter validation
@@ -24,7 +33,7 @@ PlanetScope-py is designed for remote sensing researchers, GIS analysts, and Ear
 - **Security**: API key masking, secure session management, and credential protection
 - **Cross-Platform**: Full compatibility with Windows, macOS, and Linux environments
 
-### Phase 2: Planet API Integration (Complete)
+### Planet API Integration (Complete)
 - **Scene Discovery**: Robust search functionality with advanced filtering capabilities
 - **Metadata Processing**: Comprehensive scene metadata extraction and analysis
 - **Rate Limiting**: Intelligent rate limiting with exponential backoff and retry logic
@@ -36,27 +45,35 @@ PlanetScope-py is designed for remote sensing researchers, GIS analysts, and Ear
 - **Preview Support**: Scene preview URL generation for visual inspection
 - **Real-World Testing**: Verified with actual Planet API calls and data retrieval
 
-### Phase 3: Spatial Analysis Engine (In Development)
-- Spatial density calculations with multiple algorithms
-- Temporal pattern analysis and gap detection
-- Grid compatibility and coordinate system support
-- Advanced coverage statistics
+### Spatial Analysis Engine (Complete)
+- **Multi-Algorithm Density Calculation**: Three computational methods (rasterization, vector overlay, adaptive grid)
+- **High-Resolution Analysis**: Support for 3m to 1000m grid resolutions
+- **Performance Optimization**: Automatic method selection based on dataset characteristics
+- **Memory Efficient Processing**: Adaptive grid and chunking for large areas
+- **Basic Visualization**: GeoTIFF export with QGIS styling and summary plots
 
-### Phase 4: Visualization and Export (Planned)
-- Interactive mapping and visualization
-- Timeline and density plotting
-- Export capabilities (GeoJSON, CSV, GeoTIFF)
-- Report generation and documentation
-- Integration with GIS software
+### Basic Visualization and Export (Current)
+- **GeoTIFF Export**: GIS-compatible files with automatic QGIS styling
+- **Summary Plots**: Four-panel density visualization with statistics
+- **Basic Formats**: Export to NumPy arrays and CSV files
+- **Statistical Analysis**: Core density statistics and quality metrics
+- **GIS Compatibility**: Direct compatibility with QGIS and ArcGIS
+
+### Advanced Visualization and Export (Planned)
+- **Interactive Mapping**: Web-based interactive maps with zoom and pan
+- **Timeline Plotting**: Temporal density analysis with time-series visualization
+- **Advanced Export**: Enhanced GeoJSON export with metadata and styling
+- **Report Generation**: Automated analysis reports with charts and recommendations
+- **Dashboard Integration**: Web dashboard for monitoring and analysis workflows
 
 ## Installation
 
 ### Standard Installation
 ```bash
-# Dont use this for now  (Not Release yet on pip)
-pip install planetscope-py
-# Use this instead to install in development mode
-pip install -e .[dev]
+# Development installation (recommended)
+git clone https://github.com/Black-Lights/planetscope-py.git
+cd planetscope-py
+pip install -e .
 ```
 
 ### Development Installation
@@ -136,13 +153,63 @@ results = query.search_scenes(
 
 # Check results
 print(f"Found {len(results['features'])} scenes")
+```
 
-# Access scene metadata
-for scene in results['features'][:3]:  # First 3 scenes
-    props = scene['properties']
-    print(f"Scene ID: {scene['id']}")
-    print(f"Date: {props['acquired']}")
-    print(f"Cloud Cover: {props['cloud_cover']:.1%}")
+### Spatial Density Analysis
+```python
+from planetscope_py import SpatialDensityEngine, DensityConfig, DensityMethod
+from shapely.geometry import box
+
+# Define region of interest
+roi = box(9.04, 45.40, 9.28, 45.52)  # Milan bounding box
+
+# Configure spatial analysis
+config = DensityConfig(
+    resolution=30.0,  # 30m grid resolution
+    method=DensityMethod.AUTO  # Automatic method selection
+)
+
+# Initialize spatial analysis engine
+engine = SpatialDensityEngine(config)
+
+# Calculate spatial density
+density_result = engine.calculate_density(
+    scene_footprints=results['features'],
+    roi_geometry=roi
+)
+
+print(f"Analysis completed using {density_result.method_used.value} method")
+print(f"Grid size: {density_result.grid_info['width']}×{density_result.grid_info['height']}")
+print(f"Density range: {density_result.stats['min']}-{density_result.stats['max']} scenes per cell")
+```
+
+### Visualization and Export
+```python
+from planetscope_py.visualization import DensityVisualizer
+import os
+
+# Create visualizer
+visualizer = DensityVisualizer()
+
+# Create output directory
+os.makedirs("analysis_output", exist_ok=True)
+
+# Generate basic summary visualization
+fig = visualizer.create_summary_plot(
+    density_result=density_result,
+    save_path="analysis_output/density_summary.png"
+)
+
+# Export GeoTIFF with QGIS styling
+visualizer.export_density_geotiff_with_style(
+    density_result=density_result,
+    output_path="analysis_output/density_map.tif"
+)
+
+print("Basic visualization files created:")
+print("  - analysis_output/density_summary.png")
+print("  - analysis_output/density_map.tif") 
+print("  - analysis_output/density_map.qml")
 ```
 
 ### Advanced Usage with Metadata Processing
@@ -278,6 +345,36 @@ quality_scenes = query.filter_scenes_by_quality(
 previews = query.get_scene_previews(["scene_id_1", "scene_id_2"])
 ```
 
+### Spatial Density Analysis
+```python
+from planetscope_py import SpatialDensityEngine, DensityConfig, DensityMethod
+
+# Configure analysis with automatic method selection
+config = DensityConfig(
+    resolution=100.0,  # 100m grid cells
+    method=DensityMethod.AUTO,  # Auto-select optimal method
+    max_memory_gb=8.0,
+    parallel_workers=4
+)
+
+# Initialize engine
+engine = SpatialDensityEngine(config)
+
+# Calculate density across three methods:
+# - Rasterization: Fastest for most cases
+# - Vector Overlay: Highest precision
+# - Adaptive Grid: Memory efficient for large areas
+result = engine.calculate_density(
+    scene_footprints=scenes,
+    roi_geometry=roi
+)
+
+# Access results
+print(f"Method used: {result.method_used.value}")
+print(f"Computation time: {result.computation_time:.2f}s")
+print(f"Density statistics: {result.stats}")
+```
+
 ### Metadata Processing
 ```python
 from planetscope_py import MetadataProcessor
@@ -379,10 +476,12 @@ python -m pytest tests/test_utils.py -v
 python -m pytest tests/test_query.py -v
 python -m pytest tests/test_metadata.py -v
 python -m pytest tests/test_rate_limiter.py -v
+python -m pytest tests/test_density_engine.py -v
+python -m pytest tests/test_visualization.py -v
 ```
 
 ### Test Coverage
-Current test coverage: **249/249 tests passing (100%)**
+Current test coverage: **280/280 tests passing (100%)**
 
 | Component | Tests | Status |
 |-----------|-------|--------|
@@ -393,12 +492,14 @@ Current test coverage: **249/249 tests passing (100%)**
 | Planet API Query | 45+ | All passing |
 | Metadata Processing | 30+ | All passing |
 | Rate Limiting | 25+ | All passing |
+| Spatial Analysis | 35+ | All passing |
+| Basic Visualization | 18+ | All passing |
 
-**Total: 249 tests with 99%+ coverage**
+**Total: 280 tests with 100% coverage**
 
 ## Development Roadmap
 
-### Phase 1: Foundation (Complete)
+### Foundation (Complete)
 - Robust authentication system with hierarchical API key detection
 - Advanced configuration management with environment support
 - Comprehensive exception handling with detailed error context
@@ -406,7 +507,7 @@ Current test coverage: **249/249 tests passing (100%)**
 - 100% test coverage with professional testing practices
 - Security-first design with credential masking and protection
 
-### Phase 2: Planet API Integration (Complete)
+### Planet API Integration (Complete)
 - Scene discovery and search capabilities with real API integration
 - Metadata extraction and processing with comprehensive analysis
 - Rate limiting and request optimization with retry logic
@@ -417,21 +518,27 @@ Current test coverage: **249/249 tests passing (100%)**
 - Batch operations for multiple geometries
 - Quality-based scene filtering
 - Preview URL generation
-- Comprehensive test suite with 249 tests
+- Comprehensive test suite
 
-### Phase 3: Spatial Analysis Engine (In Development)
-- Multi-algorithm spatial density calculations
-- Temporal pattern analysis and frequency assessment
-- Coverage gap detection and reporting
-- Grid system compatibility and alignment
+### Spatial Analysis Engine (Complete)
+- Multi-algorithm spatial density calculations (rasterization, vector overlay, adaptive grid)
+- High-resolution analysis support (3m to 1000m grid resolutions)
+- Performance optimization with automatic method selection
+- Memory efficient processing for large areas
 - Statistical analysis and quality metrics
 
-### Phase 4: Visualization and Export (Planned)
-- Interactive mapping and visualization
-- Timeline and density plotting
-- Export capabilities (GeoJSON, CSV, GeoTIFF)
-- Report generation and documentation
-- Integration with GIS software
+### Basic Visualization (Current)
+- GeoTIFF export with QGIS integration
+- Summary plots with statistical analysis
+- Basic export formats (NumPy, CSV)
+- GIS software compatibility
+
+### Advanced Visualization and Export (Planned)
+- Interactive web-based mapping and visualization
+- Timeline and temporal density plotting
+- Enhanced export capabilities (GeoJSON with styling, detailed reports)
+- Automated report generation with charts and recommendations
+- Dashboard integration for monitoring workflows
 
 ## API Reference
 
@@ -502,7 +609,28 @@ results = query.search_scenes(
 print(f"Found {len(results['features'])} scenes over Milan")
 ```
 
-### Example 2: Batch Processing Multiple ROIs
+### Example 2: High-Resolution Density Analysis
+```python
+# Perform 3m resolution analysis for detailed coverage mapping
+from planetscope_py import SpatialDensityEngine, DensityConfig, DensityMethod
+from shapely.geometry import box
+
+roi = box(9.1, 45.4, 9.2, 45.5)  # Small area for high-resolution
+
+config = DensityConfig(
+    resolution=3.0,  # 3m grid cells (sub-pixel analysis)
+    method=DensityMethod.RASTERIZATION,  # Optimal for high resolution
+    max_memory_gb=16.0
+)
+
+engine = SpatialDensityEngine(config)
+result = engine.calculate_density(scenes, roi)
+
+print(f"High-resolution analysis: {result.grid_info['width']}×{result.grid_info['height']} cells")
+print(f"Sub-pixel detail: 3m grid vs ~10m scene resolution")
+```
+
+### Example 3: Batch Processing Multiple ROIs
 ```python
 # Process multiple regions simultaneously
 regions = [
@@ -523,7 +651,7 @@ for i, result in enumerate(batch_results):
         print(f"Region {i+1}: {len(scenes)} scenes found")
 ```
 
-### Example 3: Quality-Based Filtering
+### Example 4: Quality-Based Filtering
 ```python
 # Filter scenes by quality criteria
 high_quality_scenes = query.filter_scenes_by_quality(
@@ -536,10 +664,26 @@ high_quality_scenes = query.filter_scenes_by_quality(
 print(f"High quality scenes: {len(high_quality_scenes)}")
 ```
 
+## Documentation
+
+### Available Resources
+- **Complete Wiki**: [GitHub Wiki](https://github.com/Black-Lights/planetscope-py/wiki) with comprehensive guides
+- **API Reference**: Complete function and class documentation
+- **Getting Started Guide**: Installation and authentication setup
+- **Spatial Analysis Guide**: Complete spatial analysis workflows
+- **Examples & Tutorials**: Real-world usage examples
+
+### Wiki Documentation Structure
+- **Getting Started**: Installation, setup, authentication
+- **Core Features**: Scene discovery, metadata analysis, spatial analysis
+- **Advanced Features**: Computational methods, performance optimization
+- **Examples**: Complete workflow tutorials
+- **Reference**: Comprehensive API documentation
+
 ## Development
 
 ### Code Quality Standards
-- **Testing**: Comprehensive test coverage with pytest (249/249 tests passing)
+- **Testing**: Comprehensive test coverage with pytest (280/280 tests passing)
 - **Type Hints**: Progressive type annotation implementation with Python 3.10+ support
 - **Documentation**: Detailed docstrings and comprehensive README with examples
 - **Security**: Credential protection and secure error handling with API key masking
@@ -589,27 +733,10 @@ python -m pytest tests/ -v
 - python-dateutil: Date parsing and operations
 - orjson: High-performance JSON processing
 
-## Documentation
-
-### Available Resources
-- **API Reference**: Complete function and class documentation
-- **Getting Started Guide**: Installation and authentication setup
-- **Configuration Guide**: Advanced configuration options
-- **Testing Guide**: Running and extending the test suite
-- **Development Guide**: Contributing and development workflows
-
-### Building Documentation
-```bash
-# Install documentation dependencies
-pip install sphinx sphinx-rtd-theme
-
-# Generate documentation
-cd docs
-make html
-
-# View documentation
-open _build/html/index.html
-```
+### Optional Dependencies (for spatial analysis)
+- rasterio: Raster data I/O and processing
+- geopandas: Geospatial data analysis
+- matplotlib: Plotting and visualization
 
 ## Support
 
