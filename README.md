@@ -1,27 +1,31 @@
 # PlanetScope-py
 
-A professional Python library for PlanetScope satellite imagery analysis, providing comprehensive tools for scene discovery, metadata analysis, and spatial-temporal density calculations using Planet's Data API.
+A professional Python library for PlanetScope satellite imagery analysis, providing comprehensive tools for scene discovery, metadata analysis, spatial-temporal density calculations, asset management, and data export using Planet's Data API.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Library Status](https://img.shields.io/badge/Library%20Status-Complete-green.svg)](#current-status)
+[![Library Status](https://img.shields.io/badge/Library%20Status-Production-green.svg)](#current-status)
 [![Spatial Analysis](https://img.shields.io/badge/Spatial%20Analysis-Complete-green.svg)](#spatial-analysis-engine-complete)
-[![Visualization](https://img.shields.io/badge/Visualization-Basic-yellow.svg)](#basic-visualization-current)
+[![Temporal Analysis](https://img.shields.io/badge/Temporal%20Analysis-Complete-green.svg)](#temporal-analysis-complete)
+[![Asset Management](https://img.shields.io/badge/Asset%20Management-Complete-green.svg)](#asset-management-complete)
 [![Test Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](#testing)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## Status
 
-**Current Status**: Spatial Analysis Engine Complete  
-**Test Coverage**: 280/280 tests passing (100%)  
+**Current Status**: Enhanced Temporal Analysis & Asset Management  
+**Version**: 4.0.0a1  
+**Test Coverage**: 349 tests passing (100%)  
 **API Integration**: Fully functional with real Planet API  
 **Spatial Analysis**: Multi-algorithm density calculations complete  
-**Visualization**: Basic export and plotting (Phase 4 advanced features planned)  
+**Temporal Analysis**: 3D data cubes, seasonal patterns, gap analysis  
+**Asset Management**: Quota monitoring, downloads, progress tracking  
+**GeoPackage Export**: Scene polygons with imagery support  
 **Python Support**: 3.10+  
 **License**: MIT  
 
 ## Overview
 
-PlanetScope-py is designed for remote sensing researchers, GIS analysts, and Earth observation professionals who need reliable tools for working with PlanetScope satellite imagery. The library provides a robust foundation for scene inventory management and sophisticated spatial-temporal analysis workflows.
+PlanetScope-py is designed for remote sensing researchers, GIS analysts, and Earth observation professionals who need reliable tools for working with PlanetScope satellite imagery. The library provides a robust foundation for scene inventory management, sophisticated spatial-temporal analysis workflows, and professional data export capabilities.
 
 ## Features
 
@@ -52,19 +56,36 @@ PlanetScope-py is designed for remote sensing researchers, GIS analysts, and Ear
 - **Memory Efficient Processing**: Adaptive grid and chunking for large areas
 - **Basic Visualization**: GeoTIFF export with QGIS styling and summary plots
 
+### Temporal Analysis (Complete)
+- **3D Spatiotemporal Data Cubes**: Multi-dimensional analysis with (lat, lon, time) dimensions
+- **Seasonal Pattern Detection**: Automated identification of acquisition patterns and seasonal trends
+- **Temporal Gap Analysis**: Detection and analysis of coverage gaps with severity assessment
+- **Time Series Analytics**: Comprehensive temporal statistics and trend analysis
+- **Temporal Resolution Support**: Configurable analysis from daily to annual scales
+- **Cross-Platform Grid Compatibility**: Standardized temporal data structures
+
+### Asset Management (Complete)
+- **Intelligent Quota Monitoring**: Real-time tracking of Planet subscription usage
+- **Asset Activation & Download**: Automated asset processing with progress tracking
+- **Download Management**: Parallel downloads with retry logic and error recovery
+- **User Confirmation System**: Interactive prompts for download decisions
+- **ROI Clipping Support**: Automatic scene clipping to regions of interest
+- **Data Usage Warnings**: Proactive alerts about subscription limits
+
+### GeoPackage Export (Complete)
+- **Professional Scene Polygons**: Comprehensive GeoPackage export with full metadata
+- **Multi-Layer Support**: Vector polygons and raster imagery in single file
+- **Comprehensive Attribute Schema**: Rich metadata tables with quality metrics
+- **GIS Software Integration**: Direct compatibility with QGIS, ArcGIS, and other tools
+- **Cross-Platform Standards**: Standardized schemas for maximum compatibility
+- **Imagery Integration**: Optional inclusion of downloaded scene imagery
+
 ### Basic Visualization and Export (Current)
 - **GeoTIFF Export**: GIS-compatible files with automatic QGIS styling
-- **Summary Plots**: Four-panel density visualization with statistics
-- **Basic Formats**: Export to NumPy arrays and CSV files
+- **Summary Plots**: Multi-panel density visualization with statistics
+- **Data Format Support**: Export to NumPy arrays, CSV, and GeoPackage files
 - **Statistical Analysis**: Core density statistics and quality metrics
 - **GIS Compatibility**: Direct compatibility with QGIS and ArcGIS
-
-### Advanced Visualization and Export (Planned)
-- **Interactive Mapping**: Web-based interactive maps with zoom and pan
-- **Timeline Plotting**: Temporal density analysis with time-series visualization
-- **Advanced Export**: Enhanced GeoJSON export with metadata and styling
-- **Report Generation**: Automated analysis reports with charts and recommendations
-- **Dashboard Integration**: Web dashboard for monitoring and analysis workflows
 
 ## Installation
 
@@ -74,6 +95,9 @@ PlanetScope-py is designed for remote sensing researchers, GIS analysts, and Ear
 git clone https://github.com/Black-Lights/planetscope-py.git
 cd planetscope-py
 pip install -e .
+
+# Install enhanced dependencies for full functionality
+pip install -r requirements.txt
 ```
 
 ### Development Installation
@@ -83,11 +107,11 @@ git clone https://github.com/Black-Lights/planetscope-py.git
 cd planetscope-py
 
 # Create and activate a virtual environment (recommended)
-python -m venv myvenv
+python -m venv venv
 # On Windows:
-myvenv\Scripts\activate
+venv\Scripts\activate
 # On macOS/Linux:
-source myvenv/bin/activate
+source venv/bin/activate
 
 # Install the package in editable mode and dev requirements
 pip install -e .
@@ -183,84 +207,149 @@ print(f"Grid size: {density_result.grid_info['width']}×{density_result.grid_inf
 print(f"Density range: {density_result.stats['min']}-{density_result.stats['max']} scenes per cell")
 ```
 
-### Visualization and Export
+### Temporal Analysis
 ```python
-from planetscope_py.visualization import DensityVisualizer
-import os
+from planetscope_py import TemporalAnalyzer, TemporalConfig, TemporalResolution
 
-# Create visualizer
-visualizer = DensityVisualizer()
+# Initialize temporal analyzer
+temporal_config = TemporalConfig(
+    temporal_resolution=TemporalResolution.WEEKLY,
+    spatial_resolution=100.0  # 100m spatial grid
+)
+temporal_analyzer = TemporalAnalyzer(temporal_config)
 
-# Create output directory
-os.makedirs("analysis_output", exist_ok=True)
-
-# Generate basic summary visualization
-fig = visualizer.create_summary_plot(
-    density_result=density_result,
-    save_path="analysis_output/density_summary.png"
+# Create 3D spatiotemporal data cube
+datacube = temporal_analyzer.create_spatiotemporal_datacube(
+    scenes=results['features'],
+    roi=roi,
+    start_date="2024-01-01",
+    end_date="2024-12-31"
 )
 
-# Export GeoTIFF with QGIS styling
-visualizer.export_density_geotiff_with_style(
-    density_result=density_result,
-    output_path="analysis_output/density_map.tif"
-)
+# Analyze acquisition patterns
+patterns = temporal_analyzer.analyze_acquisition_patterns(datacube)
+print(f"Found {len(patterns['seasonal_patterns'])} seasonal patterns")
 
-print("Basic visualization files created:")
-print("  - analysis_output/density_summary.png")
-print("  - analysis_output/density_map.tif") 
-print("  - analysis_output/density_map.qml")
+# Detect temporal gaps
+gaps = temporal_analyzer.detect_temporal_gaps(datacube)
+print(f"Detected {len(gaps)} temporal gaps")
 ```
 
-### Advanced Usage with Metadata Processing
+### Asset Management and Downloads
 ```python
-from planetscope_py import PlanetScopeQuery, MetadataProcessor
-from planetscope_py.utils import validate_geometry, calculate_area_km2
+from planetscope_py import AssetManager
 
-# Create a 100km x 100km polygon around Milan
-milan_polygon = {
-    "type": "Polygon",
-    "coordinates": [[
-        [8.55, 45.91],   # Northwest
-        [9.83, 45.91],   # Northeast  
-        [9.83, 45.02],   # Southeast
-        [8.55, 45.02],   # Southwest
-        [8.55, 45.91]    # Close polygon
-    ]]
-}
+# Initialize asset manager
+asset_manager = AssetManager(query.auth)
 
-# Validate geometry and calculate area
-validated_geom = validate_geometry(milan_polygon)
-area_km2 = calculate_area_km2(validated_geom)
-print(f"Search area: {area_km2:.2f} km²")
+# Check current quota usage
+quota_info = await asset_manager.get_quota_info()
+print(f"Current usage: {quota_info.used_area_km2:.1f} / {quota_info.limit_area_km2} km²")
 
-# Advanced search with multiple filters
-query = PlanetScopeQuery()
-results = query.search_scenes(
-    geometry=milan_polygon,
-    start_date="2024-06-01", 
-    end_date="2024-08-31",
-    cloud_cover_max=0.20,
-    sun_elevation_min=25,
-    item_types=["PSScene"]
+# Select scenes for download (with user confirmation)
+selected_scenes = results['features'][:10]  # First 10 scenes
+
+# Calculate download impact
+download_info = asset_manager.calculate_download_impact(selected_scenes, roi)
+print(f"Download will use: {download_info['area_km2']:.1f} km²")
+
+# Download assets with progress tracking
+if download_info['area_km2'] < quota_info.remaining_area_km2:
+    downloads = await asset_manager.activate_and_download_assets(
+        scenes=selected_scenes,
+        asset_types=["ortho_analytic_4b"],
+        clip_to_roi=roi  # Optional ROI clipping
+    )
+    print(f"Downloaded {len(downloads)} assets")
+```
+
+### GeoPackage Export
+```python
+from planetscope_py import GeoPackageManager, GeoPackageConfig
+
+# Configure GeoPackage export
+geopackage_config = GeoPackageConfig(
+    include_imagery=True,      # Include downloaded imagery
+    clip_to_roi=True,         # Clip images to ROI
+    attribute_schema="comprehensive"  # Full metadata attributes
 )
 
-# Process metadata for quality assessment
-processor = MetadataProcessor()
-assessment = processor.assess_coverage_quality(
-    scenes=results["features"],
-    target_geometry=milan_polygon
+# Initialize GeoPackage manager
+geopackage_manager = GeoPackageManager(config=geopackage_config)
+
+# Create comprehensive GeoPackage
+output_path = "milan_analysis.gpkg"
+layer_info = geopackage_manager.create_scene_geopackage(
+    scenes=results['features'],
+    output_path=output_path,
+    roi=roi,
+    downloaded_files=downloads if 'downloads' in locals() else None
 )
 
-print(f"Total scenes: {assessment['total_scenes']}")
+print(f"Created GeoPackage: {output_path}")
+print(f"Vector layer: {layer_info.feature_count} scene polygons")
+if geopackage_config.include_imagery:
+    print(f"Raster layers: Included downloaded imagery")
+```
 
-# Safe access to assessment results
-if assessment['total_scenes'] > 0:
-    print(f"Quality analysis: {assessment['quality_analysis']}")
-else:
-    print("No scenes found for specified criteria")
+### Complete Analysis Workflow
+```python
+# Complete analysis workflow with all features
+from planetscope_py import (
+    PlanetScopeQuery, SpatialDensityEngine, TemporalAnalyzer,
+    AssetManager, GeoPackageManager
+)
+
+async def complete_analysis_workflow():
+    # 1. Scene discovery
+    query = PlanetScopeQuery()
+    results = query.search_scenes(
+        geometry=milan_geometry,
+        start_date="2024-01-01",
+        end_date="2024-12-31",
+        cloud_cover_max=0.3
+    )
     
-print(f"Recommendations: {assessment['recommendations']}")
+    # 2. Spatial analysis
+    spatial_engine = SpatialDensityEngine()
+    spatial_result = spatial_engine.calculate_density(results['features'], roi)
+    
+    # 3. Temporal analysis
+    temporal_analyzer = TemporalAnalyzer()
+    datacube = temporal_analyzer.create_spatiotemporal_datacube(results['features'], roi)
+    temporal_patterns = temporal_analyzer.analyze_acquisition_patterns(datacube)
+    
+    # 4. Asset management (with user confirmation)
+    asset_manager = AssetManager(query.auth)
+    quota_info = await asset_manager.get_quota_info()
+    
+    if quota_info.remaining_area_km2 > 100:  # Check available quota
+        downloads = await asset_manager.activate_and_download_assets(
+            scenes=results['features'][:20],  # Download subset
+            clip_to_roi=roi
+        )
+    else:
+        downloads = None
+        print("Insufficient quota for downloads")
+    
+    # 5. Export to GeoPackage
+    geopackage_manager = GeoPackageManager()
+    geopackage_manager.create_scene_geopackage(
+        scenes=results['features'],
+        output_path="complete_analysis.gpkg",
+        roi=roi,
+        downloaded_files=downloads
+    )
+    
+    return {
+        'scenes': len(results['features']),
+        'spatial_analysis': spatial_result,
+        'temporal_patterns': temporal_patterns,
+        'downloads': len(downloads) if downloads else 0
+    }
+
+# Run complete workflow
+# results = await complete_analysis_workflow()
 ```
 
 ## Core Components
@@ -278,29 +367,6 @@ if auth.is_authenticated:
     
 # Get session for API requests
 session = auth.get_session()
-
-# Get authentication tuple for manual requests
-username, password = auth.get_auth_tuple()
-```
-
-### Configuration System
-```python
-from planetscope_py import PlanetScopeConfig
-
-# Load default configuration
-config = PlanetScopeConfig()
-
-# Access configuration values
-base_url = config.base_url
-rate_limits = config.rate_limits
-timeouts = config.timeouts
-
-# Modify configuration
-config.set('max_retries', 5)
-config.set('max_roi_area_km2', 15000)
-
-# Export configuration
-config_dict = config.to_dict()
 ```
 
 ### Planet API Query System
@@ -309,7 +375,7 @@ from planetscope_py import PlanetScopeQuery
 
 query = PlanetScopeQuery()
 
-# Scene search with comprehensive filtering
+# Advanced scene search with comprehensive filtering
 results = query.search_scenes(
     geometry=geometry,
     start_date="2025-01-01",
@@ -320,32 +386,13 @@ results = query.search_scenes(
 )
 
 # Get scene statistics
-stats = query.get_scene_stats(
-    geometry=geometry,
-    start_date="2025-01-01",
-    end_date="2025-01-31"
-)
+stats = query.get_scene_stats(geometry, "2025-01-01", "2025-01-31")
 
 # Batch search across multiple geometries
-batch_results = query.batch_search(
-    geometries=[geom1, geom2, geom3],
-    start_date="2025-01-01",
-    end_date="2025-01-31"
-)
-
-# Filter scenes by quality criteria
-quality_scenes = query.filter_scenes_by_quality(
-    scenes=results['features'],
-    min_quality=0.7,
-    max_cloud_cover=0.15,
-    exclude_night=True
-)
-
-# Get scene preview URLs
-previews = query.get_scene_previews(["scene_id_1", "scene_id_2"])
+batch_results = query.batch_search([geom1, geom2, geom3], "2025-01-01", "2025-01-31")
 ```
 
-### Spatial Density Analysis
+### Spatial Analysis Engine
 ```python
 from planetscope_py import SpatialDensityEngine, DensityConfig, DensityMethod
 
@@ -357,105 +404,28 @@ config = DensityConfig(
     parallel_workers=4
 )
 
-# Initialize engine
 engine = SpatialDensityEngine(config)
-
-# Calculate density across three methods:
-# - Rasterization: Fastest for most cases
-# - Vector Overlay: Highest precision
-# - Adaptive Grid: Memory efficient for large areas
-result = engine.calculate_density(
-    scene_footprints=scenes,
-    roi_geometry=roi
-)
-
-# Access results
-print(f"Method used: {result.method_used.value}")
-print(f"Computation time: {result.computation_time:.2f}s")
-print(f"Density statistics: {result.stats}")
+result = engine.calculate_density(scene_footprints=scenes, roi_geometry=roi)
 ```
 
-### Metadata Processing
+### Temporal Analysis Engine
 ```python
-from planetscope_py import MetadataProcessor
+from planetscope_py import TemporalAnalyzer, TemporalConfig, TemporalResolution
 
-processor = MetadataProcessor()
-
-# Extract comprehensive metadata from a scene
-metadata = processor.extract_scene_metadata(scene)
-
-# Assess coverage quality for a collection of scenes
-assessment = processor.assess_coverage_quality(
-    scenes=scenes,
-    target_geometry=roi_geometry
+# Configure temporal analysis
+config = TemporalConfig(
+    temporal_resolution=TemporalResolution.MONTHLY,
+    spatial_resolution=500.0,
+    enable_gap_analysis=True
 )
 
-# Filter scenes based on metadata criteria
-filtered_scenes, stats = processor.filter_by_metadata_criteria(
-    scenes=scenes,
-    criteria={
-        "max_cloud_cover": 0.2,
-        "min_sun_elevation": 40.0,
-        "min_usable_data": 0.85
-    }
-)
-```
+analyzer = TemporalAnalyzer(config)
 
-### Utility Functions
-```python
-from planetscope_py.utils import (
-    validate_geometry,
-    validate_date_range,
-    validate_cloud_cover,
-    create_point_geometry,
-    create_bbox_geometry
-)
-
-# Validate GeoJSON geometry
-geometry = {
-    "type": "Polygon",
-    "coordinates": [[[-122.5, 37.7], [-122.3, 37.7], 
-                     [-122.3, 37.8], [-122.5, 37.8], [-122.5, 37.7]]]
-}
-validate_geometry(geometry)
-
-# Validate date range with proper Planet API formatting
-start_date, end_date = validate_date_range("2025-01-01", "2025-01-31")
-
-# Validate cloud cover
-cloud_cover = validate_cloud_cover(0.15)  # 15%
-
-# Create geometries
-point = create_point_geometry(-122.4, 37.75)
-bbox = create_bbox_geometry(-122.5, 37.7, -122.3, 37.8)
-```
-
-### Exception Handling
-```python
-from planetscope_py.exceptions import (
-    PlanetScopeError,
-    AuthenticationError,
-    ValidationError,
-    ConfigurationError,
-    APIError,
-    RateLimitError
-)
-
-try:
-    results = query.search_scenes(geometry, start_date, end_date)
-except AuthenticationError as e:
-    print(f"Authentication failed: {e.message}")
-    print(f"Available methods: {e.details.get('methods', [])}")
-except ValidationError as e:
-    print(f"Validation error: {e.message}")
-    print(f"Details: {e.details}")
-except APIError as e:
-    print(f"API error: {e.message}")
-except RateLimitError as e:
-    print(f"Rate limit exceeded: {e.message}")
-except ConfigurationError as e:
-    print(f"Configuration error: {e.message}")
-    print(f"Details: {e.details}")
+# Create data cube and analyze patterns
+datacube = analyzer.create_spatiotemporal_datacube(scenes, roi)
+patterns = analyzer.analyze_acquisition_patterns(datacube)
+gaps = analyzer.detect_temporal_gaps(datacube)
+recommendations = analyzer.generate_acquisition_recommendations(datacube)
 ```
 
 ## Testing
@@ -468,20 +438,14 @@ python -m pytest tests/ -v
 # Run with coverage report
 python -m pytest tests/ --cov=planetscope_py --cov-report=html
 
-# Run specific test modules
-python -m pytest tests/test_auth.py -v
-python -m pytest tests/test_config.py -v
-python -m pytest tests/test_exceptions.py -v
-python -m pytest tests/test_utils.py -v
-python -m pytest tests/test_query.py -v
-python -m pytest tests/test_metadata.py -v
-python -m pytest tests/test_rate_limiter.py -v
-python -m pytest tests/test_density_engine.py -v
-python -m pytest tests/test_visualization.py -v
+# Run specific component tests
+python -m pytest tests/test_temporal_analysis.py -v
+python -m pytest tests/test_asset_manager.py -v
+python -m pytest tests/test_geopackage_manager.py -v
 ```
 
 ### Test Coverage
-Current test coverage: **280/280 tests passing (100%)**
+Current test coverage: **349 tests passing (100%)**
 
 | Component | Tests | Status |
 |-----------|-------|--------|
@@ -493,9 +457,11 @@ Current test coverage: **280/280 tests passing (100%)**
 | Metadata Processing | 30+ | All passing |
 | Rate Limiting | 25+ | All passing |
 | Spatial Analysis | 35+ | All passing |
-| Basic Visualization | 18+ | All passing |
+| Temporal Analysis | 23 | All passing |
+| Asset Management | 23 | All passing |
+| GeoPackage Export | 21 | All passing |
 
-**Total: 280 tests with 100% coverage**
+**Total: 349 tests with 100% success rate**
 
 ## Development Roadmap
 
@@ -504,7 +470,6 @@ Current test coverage: **280/280 tests passing (100%)**
 - Advanced configuration management with environment support
 - Comprehensive exception handling with detailed error context
 - Complete utility functions with geometry and date validation
-- 100% test coverage with professional testing practices
 - Security-first design with credential masking and protection
 
 ### Planet API Integration (Complete)
@@ -513,11 +478,6 @@ Current test coverage: **280/280 tests passing (100%)**
 - Rate limiting and request optimization with retry logic
 - Response caching and pagination handling
 - Advanced filtering and selection tools
-- Date formatting with proper Planet API compliance
-- Geometry validation for multiple input formats
-- Batch operations for multiple geometries
-- Quality-based scene filtering
-- Preview URL generation
 - Comprehensive test suite
 
 ### Spatial Analysis Engine (Complete)
@@ -525,20 +485,18 @@ Current test coverage: **280/280 tests passing (100%)**
 - High-resolution analysis support (3m to 1000m grid resolutions)
 - Performance optimization with automatic method selection
 - Memory efficient processing for large areas
-- Statistical analysis and quality metrics
 
-### Basic Visualization (Current)
-- GeoTIFF export with QGIS integration
-- Summary plots with statistical analysis
-- Basic export formats (NumPy, CSV)
-- GIS software compatibility
+### Enhanced Temporal Analysis & Asset Management (Current - Complete)
+- Temporal Analysis: 3D spatiotemporal data cubes, seasonal patterns, gap analysis
+- Asset Management: Quota monitoring, intelligent downloads, progress tracking
+- GeoPackage Export: Professional scene polygons with imagery integration
+- Interactive Controls: User confirmations, progress bars, workflow management
 
-### Advanced Visualization and Export (Planned)
-- Interactive web-based mapping and visualization
-- Timeline and temporal density plotting
-- Enhanced export capabilities (GeoJSON with styling, detailed reports)
-- Automated report generation with charts and recommendations
-- Dashboard integration for monitoring workflows
+### Future Enhancements (Planned)
+- **Advanced Visualization**: Interactive web-based mapping and visualization
+- **Cloud Integration**: Cloud-based processing for large-scale analysis
+- **Machine Learning**: Predictive modeling for acquisition planning
+- **API Endpoints**: RESTful API for web service integration
 
 ## API Reference
 
@@ -549,15 +507,7 @@ BASE_URL = "https://api.planet.com/data/v1"
 DEFAULT_ITEM_TYPES = ["PSScene"]
 DEFAULT_ASSET_TYPES = ["ortho_analytic_4b", "ortho_analytic_4b_xml"]
 
-# Rate Limits (requests per second)
-RATE_LIMITS = {
-    "search": 10,
-    "activate": 5,
-    "download": 15,
-    "general": 10
-}
-
-# Timeout Settings (seconds)
+# Enhanced timeouts and limits
 TIMEOUTS = {
     "connect": 10.0,
     "read": 30.0,
@@ -567,7 +517,6 @@ TIMEOUTS = {
 
 # Validation Limits
 MAX_ROI_AREA_KM2 = 10000
-MAX_GEOMETRY_VERTICES = 1000
 DEFAULT_CRS = "EPSG:4326"
 ```
 
@@ -580,141 +529,6 @@ PlanetScopeError (Base)
 ├── APIError               # Planet API communication errors
 ├── ConfigurationError     # Configuration file and setup issues
 └── AssetError            # Asset activation and download failures
-```
-
-## Real-World Examples
-
-### Example 1: Milan Region Analysis
-```python
-# Search for scenes over Milan region in January 2025
-from planetscope_py import PlanetScopeQuery
-
-query = PlanetScopeQuery()
-
-# 100km x 100km area around Milan
-milan_geometry = {
-    "type": "Polygon", 
-    "coordinates": [[
-        [8.55, 45.91], [9.83, 45.91], [9.83, 45.02], [8.55, 45.02], [8.55, 45.91]
-    ]]
-}
-
-results = query.search_scenes(
-    geometry=milan_geometry,
-    start_date="2025-01-01",
-    end_date="2025-01-31", 
-    cloud_cover_max=0.2
-)
-
-print(f"Found {len(results['features'])} scenes over Milan")
-```
-
-### Example 2: High-Resolution Density Analysis
-```python
-# Perform 3m resolution analysis for detailed coverage mapping
-from planetscope_py import SpatialDensityEngine, DensityConfig, DensityMethod
-from shapely.geometry import box
-
-roi = box(9.1, 45.4, 9.2, 45.5)  # Small area for high-resolution
-
-config = DensityConfig(
-    resolution=3.0,  # 3m grid cells (sub-pixel analysis)
-    method=DensityMethod.RASTERIZATION,  # Optimal for high resolution
-    max_memory_gb=16.0
-)
-
-engine = SpatialDensityEngine(config)
-result = engine.calculate_density(scenes, roi)
-
-print(f"High-resolution analysis: {result.grid_info['width']}×{result.grid_info['height']} cells")
-print(f"Sub-pixel detail: 3m grid vs ~10m scene resolution")
-```
-
-### Example 3: Batch Processing Multiple ROIs
-```python
-# Process multiple regions simultaneously
-regions = [
-    {"type": "Point", "coordinates": [9.19, 45.46]},    # Milan
-    {"type": "Point", "coordinates": [11.26, 43.77]},   # Florence
-    {"type": "Point", "coordinates": [12.49, 41.90]}    # Rome
-]
-
-batch_results = query.batch_search(
-    geometries=regions,
-    start_date="2025-01-01", 
-    end_date="2025-01-15"
-)
-
-for i, result in enumerate(batch_results):
-    if result["success"]:
-        scenes = result["result"]["features"]
-        print(f"Region {i+1}: {len(scenes)} scenes found")
-```
-
-### Example 4: Quality-Based Filtering
-```python
-# Filter scenes by quality criteria
-high_quality_scenes = query.filter_scenes_by_quality(
-    scenes=search_results['features'],
-    min_quality=0.8,
-    max_cloud_cover=0.1,
-    exclude_night=True
-)
-
-print(f"High quality scenes: {len(high_quality_scenes)}")
-```
-
-## Documentation
-
-### Available Resources
-- **Complete Wiki**: [GitHub Wiki](https://github.com/Black-Lights/planetscope-py/wiki) with comprehensive guides
-- **API Reference**: Complete function and class documentation
-- **Getting Started Guide**: Installation and authentication setup
-- **Spatial Analysis Guide**: Complete spatial analysis workflows
-- **Examples & Tutorials**: Real-world usage examples
-
-### Wiki Documentation Structure
-- **Getting Started**: Installation, setup, authentication
-- **Core Features**: Scene discovery, metadata analysis, spatial analysis
-- **Advanced Features**: Computational methods, performance optimization
-- **Examples**: Complete workflow tutorials
-- **Reference**: Comprehensive API documentation
-
-## Development
-
-### Code Quality Standards
-- **Testing**: Comprehensive test coverage with pytest (280/280 tests passing)
-- **Type Hints**: Progressive type annotation implementation with Python 3.10+ support
-- **Documentation**: Detailed docstrings and comprehensive README with examples
-- **Security**: Credential protection and secure error handling with API key masking
-- **Cross-Platform**: Full compatibility with Windows, macOS, and Linux environments
-- **Professional Structure**: Modular design with clear separation of concerns
-
-### Contributing
-1. Fork the repository on GitHub
-2. Create a feature branch: `git checkout -b feature-name`
-3. Install development dependencies: `pip install -r requirements-dev.txt`
-4. Make changes and add comprehensive tests
-5. Ensure all tests pass: `python -m pytest tests/ -v`
-6. Run code quality checks: `black . && flake8 . && mypy planetscope_py/`
-7. Submit a pull request with detailed description
-
-### Development Setup
-```bash
-# Clone repository
-git clone https://github.com/Black-Lights/planetscope-py.git
-cd planetscope-py
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install in development mode
-pip install -e .
-pip install -r requirements-dev.txt
-
-# Verify installation
-python -m pytest tests/ -v
 ```
 
 ## Requirements
@@ -731,12 +545,12 @@ python -m pytest tests/ -v
 - numpy: Numerical computations
 - pandas: Data manipulation and analysis
 - python-dateutil: Date parsing and operations
-- orjson: High-performance JSON processing
 
-### Optional Dependencies (for spatial analysis)
-- rasterio: Raster data I/O and processing
-- geopandas: Geospatial data analysis
-- matplotlib: Plotting and visualization
+### Enhanced Dependencies
+- **Temporal Analysis**: xarray, scipy (for data cubes and analysis)
+- **Asset Management**: aiohttp, asyncio (for async downloads)
+- **GeoPackage Export**: geopandas, rasterio, fiona (for GIS data export)
+- **Optional Interactive**: ipywidgets (for Jupyter notebook integration)
 
 ## Support
 
@@ -753,8 +567,9 @@ If you use this library in your research, please cite:
   title = {PlanetScope-py: Professional Python library for PlanetScope satellite imagery analysis},
   author = {Ammar and Umayr},
   year = {2025},
+  version = {4.0.0},
   url = {https://github.com/Black-Lights/planetscope-py},
-  note = {Python library for satellite imagery analysis using Planet's Data API}
+  note = {Phase 4: Enhanced temporal analysis, asset management, and data export capabilities}
 }
 ```
 

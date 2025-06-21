@@ -7,6 +7,7 @@ planetscope-py
 ├── LICENSE
 ├── README.md
 ├── debug_failures.py
+├── downloads
 ├── method_comparison
 │   ├── adaptive_grid_50m.png
 │   ├── adaptive_grid_50m.qml
@@ -19,27 +20,45 @@ planetscope-py
 │   └── vector_overlay_50m.tif
 ├── milan_3m_density.qml
 ├── milan_3m_density.tif
+├── milan_3m_density.tif.aux.xml
+├── milan_all_scenes_output
+│   └── milan_all_500_scenes_1750514627.gpkg
 ├── milan_analysis
 │   ├── milan_density.qml
 │   ├── milan_density.tif
+│   ├── milan_density.tif.aux.xml
 │   ├── milan_density_diagnostic.png
 │   ├── milan_density_fixed.tif
 │   ├── milan_summary.png
-│   └── test_density.tif
+│   ├── test_density.tif
+│   └── test_density.tif.aux.xml
+├── milan_polygons
+│   ├── milan_city_center.geojson
+│   ├── milan_custom_area.geojson
+│   ├── milan_extended_center.geojson
+│   └── milan_municipal_boundary.geojson
+├── milan_roi.geojson
+├── milan_test_small.gpkg
 ├── phase1_completion.py
 ├── phase2_readiness.py
+├── phase4_realistic_output
+├── phase4_test_output
+│   └── milan_test_scenes.gpkg
 ├── planetscope_py
 │   ├── __init__.py
 │   ├── _version.py
 │   ├── adaptive_grid.py
+│   ├── asset_manager.py
 │   ├── auth.py
 │   ├── config.py
 │   ├── density_engine.py
 │   ├── exceptions.py
+│   ├── geopackage_manager.py
 │   ├── metadata.py
 │   ├── optimizer.py
 │   ├── query.py
 │   ├── rate_limiter.py
+│   ├── temporal_analysis.py
 │   ├── utils.py
 │   ├── utils.py.backup
 │   └── visualization.py
@@ -49,6 +68,7 @@ planetscope-py
 ├── requirements.txt
 ├── setup.py
 ├── temp_fixed_rate_limiter.py
+├── temp_phase4.ipynb
 ├── temp_setup_phase2_script.py
 ├── temp_test_auth.py
 ├── temp_test_basic_api.py
@@ -58,17 +78,21 @@ planetscope-py
 ├── temp_test_exceptions.py
 ├── temp_test_imports.py
 ├── temp_test_notebook.ipynb
+├── temp_test_phase4.ipynb
 ├── temp_test_utils.py
 ├── temp_tests_phase3.ipynb
 └── tests
     ├── __init__.py
     ├── conftest.py
     ├── mock_planet_api.py
+    ├── test_asset_manager.py
     ├── test_auth.py
     ├── test_config.py
     ├── test_exceptions.py
+    ├── test_geopackage_manager.py
     ├── test_metadata.py
     ├── test_query.py
     ├── test_rate_limiter.py
     ├── test_suite.py
+    ├── test_temporal_analysis.py
     └── test_utils.py

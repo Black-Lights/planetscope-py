@@ -9,16 +9,16 @@ Test Structure:
         - test_config.py: Configuration management tests (21 tests)
         - test_utils.py: Core utility function tests (50 tests)
         - test_exceptions.py: Exception handling tests (48 tests)
-    
+
     Phase 2 - Planet API Integration Tests:
         - test_query.py: Planet API query system tests (28 tests)
         - test_metadata.py: Metadata processing tests (34 tests)
         - test_rate_limiter.py: Rate limiting and retry logic tests (46 tests)
-    
+
     Phase 3 - Spatial Analysis Tests:
         - test_suite.py: Spatial density engine tests (25 tests)
         - Additional Phase 3 component tests integrated
-    
+
     Configuration and Fixtures:
         - conftest.py: Shared fixtures and pytest configuration
         - mock_planet_api.py: Mock API responses for testing
@@ -67,11 +67,11 @@ Test Execution Examples:
     # Specific test files
     pytest tests/test_auth.py -v
     pytest tests/test_query.py::TestPlanetScopeQuery::test_search_scenes_success_fixed
-    
+
     # Performance and parallel execution
     pytest -n auto  # Parallel execution (requires pytest-xdist)
     pytest --benchmark-only  # Benchmark tests only
-    
+
     # Test selection by pattern
     pytest -k "test_auth"      # Tests with 'auth' in name
     pytest -k "not slow"       # Exclude slow tests
@@ -88,7 +88,7 @@ Development Phase Status:
     Phase 1: Foundation - COMPLETE (144/144 tests passing)
     Phase 2: Planet API Integration - COMPLETE (108/108 tests passing)
     Phase 3: Spatial Analysis Engine - COMPLETE (28/28 tests passing)
-    
+
 Production Readiness:
     All core functionality tested and validated
     Real Planet API integration verified
@@ -137,7 +137,7 @@ __coverage_stats__ = {
     "phase_1": "99%",  # Foundation
     "phase_2": "98%",  # Planet API
     "phase_3": "96%",  # Spatial Analysis
-    "critical_paths": "100%"
+    "critical_paths": "100%",
 }
 
 # Test categories and counts
@@ -153,8 +153,9 @@ __test_categories__ = {
     "optimization": 8,
     "visualization": 5,
     "integration": 12,
-    "performance": 8
+    "performance": 8,
 }
+
 
 # Quick validation function
 def validate_test_environment():
@@ -162,6 +163,7 @@ def validate_test_environment():
     try:
         import pytest
         import planetscope_py
+
         print(f"Test environment validated")
         print(f"   Test Suite Version: {__test_version__}")
         print(f"   Status: {__test_status__}")
@@ -173,29 +175,28 @@ def validate_test_environment():
         print(f"Test environment validation failed: {e}")
         return False
 
+
 # Test execution helper
 def run_phase_tests(phase: int):
     """Helper to run tests for a specific phase."""
     import subprocess
-    
+
     phase_files = {
         1: ["test_auth.py", "test_config.py", "test_utils.py", "test_exceptions.py"],
         2: ["test_query.py", "test_metadata.py", "test_rate_limiter.py"],
-        3: ["test_suite.py"]
+        3: ["test_suite.py"],
     }
-    
+
     if phase not in phase_files:
         print(f"Invalid phase: {phase}. Available phases: 1, 2, 3")
         return False
-    
+
     print(f"Running Phase {phase} tests...")
     files = [f"tests/{f}" for f in phase_files[phase]]
-    
+
     try:
         result = subprocess.run(
-            ["pytest"] + files + ["-v"],
-            capture_output=True,
-            text=True
+            ["pytest"] + files + ["-v"], capture_output=True, text=True
         )
         print(f"Phase {phase} tests completed")
         print(f"Exit code: {result.returncode}")
@@ -204,12 +205,13 @@ def run_phase_tests(phase: int):
         print(f"Failed to run Phase {phase} tests: {e}")
         return False
 
+
 # Quick test summary
 def test_summary():
     """Print a summary of the test suite."""
-    print("="*60)
+    print("=" * 60)
     print("PLANETSCOPE-PY TEST SUITE SUMMARY")
-    print("="*60)
+    print("=" * 60)
     print(f"Version: {__test_version__}")
     print(f"Status: {__test_status__}")
     print(f"Total Tests: {__total_tests__}")
@@ -226,7 +228,7 @@ def test_summary():
     print()
     print("Phase Status:")
     print("   Phase 1: Foundation - COMPLETE")
-    print("   Phase 2: Planet API Integration - COMPLETE") 
+    print("   Phase 2: Planet API Integration - COMPLETE")
     print("   Phase 3: Spatial Analysis Engine - COMPLETE")
     print()
     print("Quick Commands:")
@@ -234,7 +236,8 @@ def test_summary():
     print("   pytest -m 'not api'      # Skip API tests")
     print("   pytest --cov=planetscope_py  # With coverage")
     print("   pytest -n auto           # Parallel execution")
-    print("="*60)
+    print("=" * 60)
+
 
 if __name__ == "__main__":
     # Print summary when run directly

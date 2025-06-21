@@ -110,6 +110,7 @@ ENV/
 env.bak/
 venv.bak/
 myvenv/
+planetscope_clean_env
 
 # Spyder project settings
 .spyderproject
@@ -206,8 +207,14 @@ pytest_cache/
 scratch*.py
 experimental*.py
 
-# Examples tets (keep main examples)
+# # Temporary output files
 milan_analysis/
 milan_3m_density.qml
 milan_3m_density.tif
 method_comparison/
+milan_3m_density.tif.aux.xml
+milan_all_scenes_output/
+milan_polygons/
+milan_roi.geojson
+milan_test_small.gpkg
+phase4_test_output/
