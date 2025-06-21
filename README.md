@@ -94,10 +94,16 @@ PlanetScope-py is designed for remote sensing researchers, GIS analysts, and Ear
 # Development installation (recommended)
 git clone https://github.com/Black-Lights/planetscope-py.git
 cd planetscope-py
-pip install -e .
+
+# Creating a virtual environment
+python -m venv planetscope_env
+.\planetscope_env\Scripts\Activate.ps1 # Windows
+pip install wheel setuptools
+python.exe -m pip install --upgrade pip
 
 # Install enhanced dependencies for full functionality
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
+pip install -e . 
 ```
 
 ### Development Installation
