@@ -94,6 +94,17 @@ PlanetScope-py is designed for remote sensing researchers, GIS analysts, and Ear
 # Development installation (recommended)
 git clone https://github.com/Black-Lights/planetscope-py.git
 cd planetscope-py
+pip install -e .
+
+# Install enhanced dependencies for full functionality
+pip install -r requirements.txt
+```
+
+### Development Installation
+```bash
+# Clone the repository
+git clone https://github.com/Black-Lights/planetscope-py.git
+cd planetscope-py
 
 # Creating a virtual environment
 python -m venv planetscope_env
@@ -104,24 +115,6 @@ python.exe -m pip install --upgrade pip
 # Install enhanced dependencies for full functionality
 pip install -r requirements-dev.txt
 pip install -e . 
-```
-
-### Development Installation
-```bash
-# Clone the repository
-git clone https://github.com/Black-Lights/planetscope-py.git
-cd planetscope-py
-
-# Create and activate a virtual environment (recommended)
-python -m venv venv
-# On Windows:
-venv\Scripts\activate
-# On macOS/Linux:
-source venv/bin/activate
-
-# Install the package in editable mode and dev requirements
-pip install -e .
-pip install -r requirements-dev.txt
 ```
 
 ## Authentication
