@@ -2,10 +2,15 @@
 
 import pytest
 
-from planetscope_py.exceptions import (APIError, AssetError,
-                                       AuthenticationError, ConfigurationError,
-                                       PlanetScopeError, RateLimitError,
-                                       ValidationError)
+from planetscope_py.exceptions import (
+    APIError,
+    AssetError,
+    AuthenticationError,
+    ConfigurationError,
+    PlanetScopeError,
+    RateLimitError,
+    ValidationError,
+)
 
 
 class TestPlanetScopeError:

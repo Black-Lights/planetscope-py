@@ -65,3 +65,12 @@ wheel>=0.45.1
 
 # Environment management
 python-dotenv>=1.0.1
+
+# Phase 4 Enhanced Dependencies
+xarray>=2024.02.0              # Temporal analysis data cubes
+aiohttp>=3.8.0                # Async asset downloads
+geopandas>=1.0.1             # GeoPackage vector operations
+fiona>=1.9.0                  # GeoPackage I/O
+rasterio>=1.4.3               # Raster processing and clipping
+scipy>=1.13.0                  # Statistical analysis for temporal patterns
+seaborn>=0.12.2                # Statistical data visualization

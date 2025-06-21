@@ -14,6 +14,7 @@ from shapely.validation import explain_validity
 
 from .config import PlanetScopeConfig
 from .exceptions import ValidationError
+
 # Phase 2 additional imports
 import numpy as np
 from shapely.geometry import Point, Polygon, MultiPolygon, mapping
@@ -26,29 +27,50 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-
-def validate_geometry(geometry: Dict[str, Any]) -> Dict[str, Any]:
-    """Validate GeoJSON geometry object.
+def validate_geometry(geometry: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
+    """Validate GeoJSON geometry object or Shapely geometry.
 
     Args:
-        geometry: GeoJSON geometry dictionary
+        geometry: GeoJSON geometry dictionary OR Shapely geometry object
 
     Returns:
-        Validated and normalized geometry
+        Validated and normalized geometry as GeoJSON dict
 
     Raises:
         ValidationError: If geometry is invalid
 
     Example:
+        # Works with GeoJSON dict (existing functionality)
         valid_geom = validate_geometry({
             "type": "Polygon",
             "coordinates": [[[lon1, lat1], [lon2, lat2], ...]]
         })
+
+        # Works with Shapely objects (NEW functionality)
+        from shapely.geometry import box
+        roi = box(9.10, 45.45, 9.25, 45.52)
+        valid_geom = validate_geometry(roi)
     """
+
+    # NEW: Handle Shapely geometry objects
+    if hasattr(geometry, "__geo_interface__"):
+        # Convert Shapely object to GeoJSON using __geo_interface__
+        geometry = geometry.__geo_interface__
+    elif hasattr(geometry, "geom_type"):
+        # Alternative way to handle Shapely objects
+        try:
+            from shapely.geometry import mapping
+
+            geometry = mapping(geometry)
+        except ImportError:
+            # Fallback if mapping import fails
+            geometry = geometry.__geo_interface__
+
+    # EXISTING: Handle GeoJSON dictionary validation (unchanged logic)
     if not isinstance(geometry, dict):
         raise ValidationError(
-            "Geometry must be a dictionary",
-            {"geometry": geometry, "type": type(geometry).__name__},
+            "Geometry must be a dictionary or Shapely object",
+            {"geometry": str(geometry)[:100], "type": type(geometry).__name__},
         )
 
     required_fields = ["type", "coordinates"]
@@ -125,9 +147,7 @@ def validate_geometry(geometry: Dict[str, Any]) -> Dict[str, Any]:
             vertex_count = len(geom_obj.exterior.coords)
         else:
             vertex_count = (
-                len(coords)
-                if geom_type == "Point"
-                else len(coords[0]) if coords else 0
+                len(coords) if geom_type == "Point" else len(coords[0]) if coords else 0
             )
 
         if vertex_count > config.MAX_GEOMETRY_VERTICES:
@@ -145,7 +165,6 @@ def validate_geometry(geometry: Dict[str, Any]) -> Dict[str, Any]:
             f"Geometry validation failed: {str(e)}",
             {"geometry": geometry, "error": str(e)},
         )
-
 
 
 def validate_date_range(
@@ -168,26 +187,32 @@ def validate_date_range(
         # Returns: ("2025-01-01T00:00:00.000000Z", "2025-12-31T23:59:59.999999Z")
     """
 
-    def parse_date(date_input: Union[str, datetime], is_end_date: bool = False) -> datetime:
+    def parse_date(
+        date_input: Union[str, datetime], is_end_date: bool = False
+    ) -> datetime:
         """Parse date input to datetime object with proper time handling."""
         if isinstance(date_input, datetime):
             return date_input
 
         if isinstance(date_input, str):
             # Check if it's a simple date string (YYYY-MM-DD)
-            if len(date_input) == 10 and date_input.count('-') == 2 and 'T' not in date_input:
+            if (
+                len(date_input) == 10
+                and date_input.count("-") == 2
+                and "T" not in date_input
+            ):
                 # Simple date format - add appropriate time
                 dt = datetime.strptime(date_input, "%Y-%m-%d")
-                
+
                 if is_end_date:
                     # Set to end of day: 23:59:59.999999
                     dt = dt.replace(hour=23, minute=59, second=59, microsecond=999999)
                 else:
                     # Set to start of day: 00:00:00.000000
                     dt = dt.replace(hour=0, minute=0, second=0, microsecond=0)
-                
+
                 return dt
-            
+
             # Handle datetime strings with time components
             formats = [
                 "%Y-%m-%d",
@@ -266,9 +291,7 @@ def validate_roi_size(geometry: Dict[str, Any]) -> float:
 
         # Calculate area in square meters using equal-area projection
         # Use Mollweide projection for global equal-area calculation
-        transformer = Transformer.from_crs(
-            "EPSG:4326", "ESRI:54009", always_xy=True
-        )
+        transformer = Transformer.from_crs("EPSG:4326", "ESRI:54009", always_xy=True)
         geom_projected = transform_geometry(geom_obj, transformer)
 
         area_m2 = geom_projected.area
@@ -527,17 +550,18 @@ def mask_api_key(api_key: str) -> str:
 # PHASE 2 ADDITIONS - Added for Planet API integration
 # ============================================================================
 
+
 def calculate_area_km2(geometry: Union[Dict, Polygon]) -> float:
     """Calculate area of geometry in square kilometers.
-    
+
     Enhanced version that works with both GeoJSON dicts and Shapely objects.
-    
+
     Args:
         geometry: GeoJSON geometry or Shapely polygon
-        
+
     Returns:
         Area in square kilometers
-        
+
     Raises:
         ValidationError: If geometry is invalid
     """
@@ -546,37 +570,37 @@ def calculate_area_km2(geometry: Union[Dict, Polygon]) -> float:
             geom = shape(geometry)
         else:
             geom = geometry
-        
+
         if not geom.is_valid:
             geom = make_valid(geom)
-        
+
         # Get centroid for appropriate projection
         centroid = geom.centroid
-        
+
         # Use appropriate UTM zone for accurate area calculation
         utm_crs = get_utm_crs(centroid.x, centroid.y)
-        
+
         # Transform to UTM for area calculation
         transformer = Transformer.from_crs("EPSG:4326", utm_crs, always_xy=True)
         utm_geom = transform(transformer.transform, geom)
-        
+
         # Calculate area in square meters, convert to km�
         area_m2 = utm_geom.area
         area_km2 = area_m2 / 1_000_000
-        
+
         return area_km2
-        
+
     except Exception as e:
         raise ValidationError(f"Error calculating geometry area: {str(e)}")
 
 
 def get_utm_crs(longitude: float, latitude: float) -> str:
     """Get appropriate UTM CRS for given coordinates.
-    
+
     Args:
         longitude: Longitude in decimal degrees
         latitude: Latitude in decimal degrees
-        
+
     Returns:
         EPSG code for UTM zone
     """
@@ -585,7 +609,7 @@ def get_utm_crs(longitude: float, latitude: float) -> str:
         # Return WGS84 as safe fallback when coordinates are invalid
         # This allows the function to continue without crashing
         return "EPSG:4326"
-    
+
     # Ensure values are numeric
     try:
         longitude = float(longitude)
@@ -593,40 +617,42 @@ def get_utm_crs(longitude: float, latitude: float) -> str:
     except (TypeError, ValueError):
         # Return WGS84 as safe fallback if conversion fails
         return "EPSG:4326"
-    
+
     # Validate coordinate ranges
     if not (-180 <= longitude <= 180) or not (-90 <= latitude <= 90):
         # Return WGS84 for invalid coordinate ranges
         return "EPSG:4326"
-    
+
     # Calculate UTM zone (1-60)
     utm_zone = int((longitude + 180) / 6) + 1
-    
+
     # Ensure UTM zone is within valid range
     utm_zone = max(1, min(60, utm_zone))
-    
+
     # Determine hemisphere - NOW SAFE FROM None COMPARISON
     if latitude >= 0:
         epsg_code = f"EPSG:{32600 + utm_zone}"  # Northern hemisphere
     else:
         epsg_code = f"EPSG:{32700 + utm_zone}"  # Southern hemisphere
-    
+
     return epsg_code
 
 
-def transform_geometry_crs(geometry: Union[Dict, Polygon], 
-                          source_crs: str = "EPSG:4326",
-                          target_crs: str = "EPSG:3857") -> Dict:
+def transform_geometry_crs(
+    geometry: Union[Dict, Polygon],
+    source_crs: str = "EPSG:4326",
+    target_crs: str = "EPSG:3857",
+) -> Dict:
     """Transform geometry between coordinate reference systems.
-    
+
     Args:
         geometry: Input geometry
         source_crs: Source CRS (default: WGS84)
         target_crs: Target CRS (default: Web Mercator)
-        
+
     Returns:
         Transformed geometry as GeoJSON dict
-        
+
     Raises:
         ValidationError: If transformation fails
     """
@@ -635,30 +661,31 @@ def transform_geometry_crs(geometry: Union[Dict, Polygon],
             geom = shape(geometry)
         else:
             geom = geometry
-        
+
         # Create transformer
         transformer = Transformer.from_crs(source_crs, target_crs, always_xy=True)
-        
+
         # Transform geometry
         transformed_geom = transform(transformer.transform, geom)
-        
+
         return mapping(transformed_geom)
-        
+
     except Exception as e:
         raise ValidationError(f"Error transforming geometry: {str(e)}")
 
 
-def create_bounding_box(geometry: Union[Dict, Polygon], 
-                       buffer_meters: float = 0) -> Dict:
+def create_bounding_box(
+    geometry: Union[Dict, Polygon], buffer_meters: float = 0
+) -> Dict:
     """Create bounding box from geometry.
-    
+
     Args:
         geometry: Input geometry
         buffer_meters: Buffer distance in meters (default: 0)
-        
+
     Returns:
         Bounding box as GeoJSON polygon
-        
+
     Raises:
         ValidationError: If geometry processing fails
     """
@@ -667,10 +694,10 @@ def create_bounding_box(geometry: Union[Dict, Polygon],
             geom = shape(geometry)
         else:
             geom = geometry
-        
+
         # Get bounds
         minx, miny, maxx, maxy = geom.bounds
-        
+
         # Apply buffer if specified
         if buffer_meters > 0:
             # Convert buffer to degrees (approximate)
@@ -679,33 +706,28 @@ def create_bounding_box(geometry: Union[Dict, Polygon],
             miny -= buffer_degrees
             maxx += buffer_degrees
             maxy += buffer_degrees
-        
+
         # Create bounding box polygon
-        bbox = Polygon([
-            (minx, miny),
-            (maxx, miny), 
-            (maxx, maxy),
-            (minx, maxy),
-            (minx, miny)
-        ])
-        
+        bbox = Polygon(
+            [(minx, miny), (maxx, miny), (maxx, maxy), (minx, maxy), (minx, miny)]
+        )
+
         return mapping(bbox)
-        
+
     except Exception as e:
         raise ValidationError(f"Error creating bounding box: {str(e)}")
 
 
-def buffer_geometry(geometry: Union[Dict, Polygon], 
-                   buffer_meters: float) -> Dict:
+def buffer_geometry(geometry: Union[Dict, Polygon], buffer_meters: float) -> Dict:
     """Buffer geometry by specified distance.
-    
+
     Args:
         geometry: Input geometry
         buffer_meters: Buffer distance in meters
-        
+
     Returns:
         Buffered geometry as GeoJSON dict
-        
+
     Raises:
         ValidationError: If buffering fails
     """
@@ -714,62 +736,62 @@ def buffer_geometry(geometry: Union[Dict, Polygon],
             geom = shape(geometry)
         else:
             geom = geometry
-        
+
         # Get centroid for projection
         centroid = geom.centroid
         utm_crs = get_utm_crs(centroid.x, centroid.y)
-        
+
         # Transform to UTM for accurate buffering
         to_utm = Transformer.from_crs("EPSG:4326", utm_crs, always_xy=True)
         utm_geom = transform(to_utm.transform, geom)
-        
+
         # Buffer in UTM
         buffered_utm = utm_geom.buffer(buffer_meters)
-        
+
         # Transform back to WGS84
         from_utm = Transformer.from_crs(utm_crs, "EPSG:4326", always_xy=True)
         buffered_geom = transform(from_utm.transform, buffered_utm)
-        
+
         return mapping(buffered_geom)
-        
+
     except Exception as e:
         raise ValidationError(f"Error buffering geometry: {str(e)}")
 
 
 def validate_coordinates(longitude: float, latitude: float) -> Tuple[float, float]:
     """Validate geographic coordinates.
-    
+
     Args:
         longitude: Longitude in decimal degrees
         latitude: Latitude in decimal degrees
-        
+
     Returns:
         Tuple of validated coordinates
-        
+
     Raises:
         ValidationError: If coordinates are invalid
     """
     if not isinstance(longitude, (int, float)):
         raise ValidationError("Longitude must be a number")
-    
+
     if not isinstance(latitude, (int, float)):
         raise ValidationError("Latitude must be a number")
-    
+
     if not -180.0 <= longitude <= 180.0:
         raise ValidationError("Longitude must be between -180 and 180 degrees")
-    
+
     if not -90.0 <= latitude <= 90.0:
         raise ValidationError("Latitude must be between -90 and 90 degrees")
-    
+
     return float(longitude), float(latitude)
 
 
 def format_geometry_for_api(geometry: Union[Dict, Polygon]) -> Dict:
     """Format geometry for Planet API compatibility.
-    
+
     Args:
         geometry: Input geometry
-        
+
     Returns:
         API-compatible GeoJSON geometry
     """
@@ -778,22 +800,22 @@ def format_geometry_for_api(geometry: Union[Dict, Polygon]) -> Dict:
         geom_dict = validate_geometry(geometry)
     else:
         geom_dict = validate_geometry(mapping(geometry))
-    
+
     # Ensure coordinates are properly formatted
-    if isinstance(geom_dict.get('coordinates'), list):
+    if isinstance(geom_dict.get("coordinates"), list):
         # Round coordinates to reasonable precision
-        geom_dict['coordinates'] = _round_coordinates(geom_dict['coordinates'])
-    
+        geom_dict["coordinates"] = _round_coordinates(geom_dict["coordinates"])
+
     return geom_dict
 
 
 def _round_coordinates(coords: List, precision: int = 6) -> List:
     """Round coordinates to specified precision.
-    
+
     Args:
         coords: Coordinate array (nested lists)
         precision: Decimal places to round to
-        
+
     Returns:
         Rounded coordinate array
     """
@@ -807,13 +829,13 @@ def _round_coordinates(coords: List, precision: int = 6) -> List:
 
 def safe_json_loads(json_str: str) -> Dict:
     """Safely load JSON string with error handling.
-    
+
     Args:
         json_str: JSON string to parse
-        
+
     Returns:
         Parsed JSON dictionary
-        
+
     Raises:
         ValidationError: If JSON is invalid
     """
@@ -825,35 +847,35 @@ def safe_json_loads(json_str: str) -> Dict:
 
 def format_file_size(size_bytes: int) -> str:
     """Format file size in human-readable format.
-    
+
     Args:
         size_bytes: Size in bytes
-        
+
     Returns:
         Formatted size string
     """
-    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+    for unit in ["B", "KB", "MB", "GB", "TB"]:
         if size_bytes < 1024.0:
             return f"{size_bytes:.1f} {unit}"
         size_bytes /= 1024.0
     return f"{size_bytes:.1f} PB"
 
- # Enhanced geometry validation function to utils.py
+
+# Enhanced geometry validation function to utils.py
 def validate_geometry_enhanced(geometry):
     """Enhanced geometry validation that handles multiple input types."""
-    
+
     # Handle Shapely objects
-    if hasattr(geometry, '__geo_interface__'):
+    if hasattr(geometry, "__geo_interface__"):
         return geometry.__geo_interface__
-    
+
     # Handle regular dicts
     elif isinstance(geometry, dict):
         return validate_geometry(geometry)  # Use existing function
-    
+
     # Handle other types
     else:
         raise ValidationError(
             "Geometry must be a dictionary or Shapely object",
-            {"geometry": str(geometry)[:100], "type": type(geometry).__name__}
+            {"geometry": str(geometry)[:100], "type": type(geometry).__name__},
         )
-

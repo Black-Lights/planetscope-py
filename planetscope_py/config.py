@@ -197,9 +197,7 @@ class PlanetScopeConfig:
             "rate_limits": self.get("rate_limits", self.RATE_LIMITS),
             "timeouts": self.get("timeouts", self.TIMEOUTS),
             "max_retries": self.get("max_retries", self.MAX_RETRIES),
-            "max_roi_area_km2": self.get(
-                "max_roi_area_km2", self.MAX_ROI_AREA_KM2
-            ),
+            "max_roi_area_km2": self.get("max_roi_area_km2", self.MAX_ROI_AREA_KM2),
             "default_crs": self.get("default_crs", self.DEFAULT_CRS),
         }
         config.update(self._config_data)
