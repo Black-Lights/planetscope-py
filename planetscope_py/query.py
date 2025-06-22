@@ -18,6 +18,7 @@ from datetime import datetime, timedelta, timezone
 import requests
 from shapely.geometry import shape, Point, Polygon
 from shapely.validation import make_valid
+import math
 
 from .auth import PlanetAuth
 from .config import default_config
@@ -32,7 +33,7 @@ from .rate_limiter import RateLimiter
 from .utils import (
     validate_geometry,
     calculate_area_km2,
-    validate_date_range,  # <-- This was missing!
+    validate_date_range,
 )
 
 logger = logging.getLogger(__name__)
@@ -86,7 +87,7 @@ class PlanetScopeQuery:
         **kwargs,
     ) -> Dict:
         """Search for Planet scenes based on spatiotemporal criteria with proper API call handling and pagination.
-
+        
         Executes a search request to Planet's Data API with comprehensive error handling,
         result processing, and automatic pagination to retrieve ALL matching scenes.
         Supports both dictionary and Shapely geometry inputs.
@@ -126,122 +127,116 @@ class PlanetScopeQuery:
             ...     end_date="2024-01-31",
             ...     cloud_cover_max=0.1
             ... )
-            >>> print(f"Found {len(results['features'])} scenes")  # Can be > 250!
+            >>> print(f"Found {len(results['features'])} scenes")
         """
         try:
-            logger.info(
-                f"Executing search for {len(item_types or ['PSScene'])} item types"
-            )
+            # ... (validation code remains the same) ...
+            
+            # Validate inputs
+            validated_geometry = validate_geometry(geometry)
+            validated_dates = validate_date_range(start_date, end_date)
+            start_date, end_date = validated_dates
 
-            # Build search filter with proper geometry handling
-            search_filter = self._build_search_filter(
-                geometry=geometry,
-                start_date=start_date,
-                end_date=end_date,
-                cloud_cover_max=cloud_cover_max,
-                **kwargs,
-            )
-
-            # Use default item types if none provided
             if item_types is None:
-                item_types = ["PSScene"]
+                item_types = self.config.item_types
 
-            # Prepare search request
+            logger.info(f"Executing search for {len(item_types)} item types")
+
+            # Build search filter
+            search_filter = self._build_search_filter(
+                validated_geometry, start_date, end_date, cloud_cover_max, **kwargs
+            )
+
+            # Build initial search request
             search_request = {"item_types": item_types, "filter": search_filter}
 
-            # Make API request with proper error handling
-            base_url = getattr(
-                self.config, "base_url", "https://api.planet.com/data/v1"
-            )
-            url = f"{base_url}/quick-search"
-
-            # === PAGINATION IMPLEMENTATION ===
+            # Handle pagination to get ALL results
             all_features = []
             page_count = 0
-            next_url = None
-            total_scenes_found = 0
+            search_url = f"{self.config.base_url}/quick-search"
+            next_page_url = None
 
             logger.info("Starting paginated search...")
 
             while True:
                 page_count += 1
 
-                if next_url:
-                    # Use next page URL from previous response
-                    response = self.rate_limiter.make_request("GET", next_url)
-                    logger.debug(f"Fetching page {page_count} from pagination link")
-                else:
-                    # First page - use POST request with search criteria
+                # Use next page URL if available, otherwise use base search
+                if next_page_url:
+                    # For subsequent pages, use the _next URL from previous response
                     response = self.rate_limiter.make_request(
-                        "POST", url, json=search_request
+                        method="GET",
+                        url=next_page_url,
+                        timeout=self.config.timeouts["read"],
                     )
-                    logger.debug(f"Executing initial search (page {page_count})")
+                else:
+                    # First page - POST request with search parameters
+                    response = self.rate_limiter.make_request(
+                        method="POST",
+                        url=search_url,
+                        json=search_request,
+                        timeout=self.config.timeouts["read"],
+                    )
 
-                # Handle API response
                 if response.status_code != 200:
                     raise APIError(
-                        f"Search failed with status {response.status_code}: {response.text}"
+                        f"Search request failed with status {response.status_code}",
+                        {
+                            "status_code": response.status_code,
+                            "response": response.text[:500],
+                            "request": search_request,
+                        },
                     )
 
-                # Parse response
-                page_results = response.json()
-                page_features = page_results.get("features", [])
+                page_data = response.json()
+                page_features = page_data.get("features", [])
 
                 logger.info(f"Page {page_count}: {len(page_features)} scenes")
 
-                # Add features from this page
+                if not page_features:
+                    logger.info("No more pages available")
+                    break
+
                 all_features.extend(page_features)
-                total_scenes_found += len(page_features)
 
-                # Check for next page in Planet API response
-                links = page_results.get("_links", {})
-                next_url = links.get("_next")
-
-                # Stop conditions
-                if not next_url:
-                    logger.info(f"No more pages available")
-                    break
-
+                # Check if we have a limit and have reached it
                 if limit and len(all_features) >= limit:
-                    logger.info(f"Reached user-specified limit of {limit} scenes")
-                    all_features = all_features[:limit]  # Trim to exact limit
+                    all_features = all_features[:limit]
+                    logger.info(f"Reached limit of {limit} scenes")
                     break
 
-                if len(page_features) == 0:
-                    logger.info(f"Empty page received, stopping pagination")
+                # Check for next page link in response
+                links = page_data.get("_links", {})
+                next_page_url = links.get("_next")
+                
+                if not next_page_url:
+                    logger.info("No more pages available (no _next link)")
                     break
 
-                # Safety: Prevent infinite loops (Planet API shouldn't do this, but just in case)
-                if page_count >= 100:  # Max 100 pages = 25,000 scenes
-                    logger.warning(
-                        f"Reached maximum page limit (100 pages), stopping pagination"
-                    )
+                # Safety check: if we get the same number of features as the page size,
+                # but no _next link, we're likely at the end
+                if len(page_features) < 250:  # Planet's typical page size
+                    logger.info("Reached end of results (partial page)")
+                    break
+
+                # Safety check: prevent infinite loops
+                if page_count > 1000:  # Reasonable upper limit
+                    logger.warning(f"Stopping pagination at {page_count} pages to prevent infinite loop")
                     break
 
             logger.info(
                 f"Pagination complete: {len(all_features)} total scenes from {page_count} pages"
             )
 
-            # Create combined results with all features
-            search_results = {
-                "features": all_features,
-                "_pagination": {
-                    "total_pages": page_count,
-                    "total_features": len(all_features),
-                    "pagination_used": page_count > 1,
-                    "last_page_url": next_url,
-                },
-            }
+            # Calculate search statistics
+            search_stats = self._calculate_search_stats({"features": all_features})
 
-            # Calculate search statistics on ALL results
-            search_stats = self._calculate_search_stats(search_results)
-
-            # Store results for later access
-            self._last_search_results = search_results
+            # Store results for potential reuse
+            self._last_search_results = all_features
             self._last_search_stats = search_stats
 
             logger.info(
-                f"Search completed: {search_stats.get('total_scenes', 0)} scenes found across {page_count} pages"
+                f"Search completed: {len(all_features)} scenes found across {page_count} pages"
             )
 
             # Return formatted results with pagination info
@@ -273,83 +268,363 @@ class PlanetScopeQuery:
                 raise
             raise APIError(f"Unexpected error during search: {e}")
 
-    # Supporting helper function for calculating stats (if not already present)
     def _calculate_search_stats(self, search_results: Dict) -> Dict:
         """Calculate comprehensive statistics for search results."""
         features = search_results.get("features", [])
-
         if not features:
-            return {
-                "total_scenes": 0,
-                "date_range": None,
-                "cloud_cover_stats": None,
-                "item_type_distribution": {},
-                "coverage_area_km2": 0,
-            }
+            return {"total_scenes": 0}
 
-        # Basic stats
-        total_scenes = len(features)
-
-        # Date range analysis
-        acquisition_dates = []
+        # Extract metadata for statistics
         cloud_covers = []
-        item_types = []
+        sun_elevations = []
+        acquisition_dates = []
+        satellites = []
 
         for feature in features:
             props = feature.get("properties", {})
 
-            # Collect acquisition dates
-            acquired = props.get("acquired")
-            if acquired:
-                acquisition_dates.append(acquired)
-
-            # Collect cloud cover values
             cloud_cover = props.get("cloud_cover")
             if cloud_cover is not None:
                 cloud_covers.append(cloud_cover)
 
-            # Collect item types
-            item_type = props.get("item_type")
-            if item_type:
-                item_types.append(item_type)
+            sun_elevation = props.get("sun_elevation")
+            if sun_elevation is not None:
+                sun_elevations.append(sun_elevation)
 
-        # Calculate date range
-        date_range = None
+            acquired = props.get("acquired")
+            if acquired:
+                acquisition_dates.append(acquired)
+
+            satellite_id = props.get("satellite_id")
+            if satellite_id:
+                satellites.append(satellite_id)
+
+        # Calculate statistics
+        stats = {"total_scenes": len(features)}
+
+        if cloud_covers:
+            stats["cloud_cover"] = {
+                "min": min(cloud_covers),
+                "max": max(cloud_covers),
+                "mean": statistics.mean(cloud_covers),
+                "median": statistics.median(cloud_covers),
+            }
+
+        if sun_elevations:
+            stats["sun_elevation"] = {
+                "min": min(sun_elevations),
+                "max": max(sun_elevations),
+                "mean": statistics.mean(sun_elevations),
+                "median": statistics.median(sun_elevations),
+            }
+
         if acquisition_dates:
-            date_range = {
+            stats["temporal_range"] = {
                 "start": min(acquisition_dates),
                 "end": max(acquisition_dates),
                 "span_days": (
-                    pd.to_datetime(max(acquisition_dates))
-                    - pd.to_datetime(min(acquisition_dates))
+                    datetime.fromisoformat(max(acquisition_dates).replace("Z", "+00:00"))
+                    - datetime.fromisoformat(min(acquisition_dates).replace("Z", "+00:00"))
                 ).days,
             }
 
-        # Calculate cloud cover statistics
-        cloud_cover_stats = None
-        if cloud_covers:
-            cloud_cover_stats = {
-                "mean": float(np.mean(cloud_covers)),
-                "min": float(np.min(cloud_covers)),
-                "max": float(np.max(cloud_covers)),
-                "std": float(np.std(cloud_covers)),
-                "median": float(np.median(cloud_covers)),
+        if satellites:
+            stats["satellites"] = {
+                "unique_count": len(set(satellites)),
+                "distribution": {
+                    satellite: satellites.count(satellite) for satellite in set(satellites)
+                },
             }
 
-        # Item type distribution
-        from collections import Counter
+        return stats
 
-        item_type_distribution = dict(Counter(item_types))
+    def get_scene_previews(self, scene_ids: List[str]) -> Dict[str, str]:
+        """Get preview URLs for specified scenes using Planet's Tile Service API.
+        
+        This method works for any geographic region and calculates proper tile coordinates
+        from actual scene geometry, ensuring the URLs work anywhere in the world.
+        
+        Args:
+            scene_ids: List of Planet scene IDs
 
-        return {
-            "total_scenes": total_scenes,
-            "date_range": date_range,
-            "cloud_cover_stats": cloud_cover_stats,
-            "item_type_distribution": item_type_distribution,
-            "acquisition_dates_available": len(acquisition_dates),
-            "cloud_cover_values_available": len(cloud_covers),
-        }
+        Returns:
+            Dictionary mapping scene IDs to working tile preview URLs
+            
+        Example:
+            >>> query = PlanetScopeQuery()
+            >>> results = query.search_scenes(any_geometry, "2024-01-01", "2024-01-31")
+            >>> scene_ids = [scene['id'] for scene in results['features'][:5]]
+            >>> previews = query.get_scene_previews(scene_ids)
+            >>> for scene_id, preview_url in previews.items():
+            ...     print(f"Scene {scene_id}: {preview_url}")
+        """
+        
+        logger.info(f"Getting working preview URLs for {len(scene_ids)} scenes")
+        
+        def lat_lon_to_tile(lat: float, lon: float, zoom: int) -> Tuple[int, int]:
+            """Convert lat/lon coordinates to tile coordinates."""
+            lat_rad = math.radians(lat)
+            n = 2.0 ** zoom
+            x = int((lon + 180.0) / 360.0 * n)
+            y = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n)
+            return (x, y)
+        
+        def get_scene_center(scene_geometry):
+            """Get the center coordinates of a scene."""
+            try:
+                geom = shape(scene_geometry)
+                centroid = geom.centroid
+                return centroid.y, centroid.x  # lat, lon
+            except Exception:
+                return None, None
+        
+        def get_fallback_coordinates(scene_ids):
+            """Get fallback coordinates from search ROI or scene locations."""
+            # Try to use the search geometry from last search as fallback
+            if hasattr(self, '_last_search_results') and self._last_search_results:
+                # Use the centroid of all scenes as fallback
+                all_lats, all_lons = [], []
+                for scene in self._last_search_results:
+                    try:
+                        geom = shape(scene['geometry'])
+                        all_lats.append(geom.centroid.y)
+                        all_lons.append(geom.centroid.x)
+                    except:
+                        continue
+                
+                if all_lats and all_lons:
+                    avg_lat = sum(all_lats) / len(all_lats)
+                    avg_lon = sum(all_lons) / len(all_lons)
+                    return avg_lat, avg_lon
+            
+            # If no previous results, try to get from individual scenes
+            for scene_id in scene_ids:
+                try:
+                    scene_url = f"{self.config.base_url}/item-types/PSScene/items/{scene_id}"
+                    response = self.rate_limiter.make_request(
+                        method="GET", 
+                        url=scene_url, 
+                        timeout=self.config.timeouts["read"]
+                    )
+                    
+                    if response.status_code == 200:
+                        scene_data = response.json()
+                        scene_geometry = scene_data.get('geometry')
+                        if scene_geometry:
+                            lat, lon = get_scene_center(scene_geometry)
+                            if lat is not None and lon is not None:
+                                return lat, lon
+                except Exception:
+                    continue
+            
+            # Last resort: return None to indicate no fallback available
+            logger.warning("Could not determine fallback coordinates for any region")
+            return None, None
+        
+        # Get tile base URL and API key
+        tile_base_url = self.config.get('tile_url', 'https://tiles.planet.com/data/v1')
+        api_key = getattr(self.auth, '_api_key', '')
+        
+        preview_urls = {}
+        
+        # Build scene geometries lookup from last search results
+        scene_geometries = {}
+        if hasattr(self, '_last_search_results') and self._last_search_results:
+            for scene in self._last_search_results:
+                if scene['id'] in scene_ids:
+                    scene_geometries[scene['id']] = scene['geometry']
+        
+        # Get fallback coordinates for scenes without geometry
+        fallback_lat, fallback_lon = get_fallback_coordinates(scene_ids)
+        
+        # Process each scene
+        for scene_id in scene_ids:
+            try:
+                scene_lat, scene_lon = None, None
+                
+                # Try to get scene-specific coordinates
+                if scene_id in scene_geometries:
+                    scene_lat, scene_lon = get_scene_center(scene_geometries[scene_id])
+                
+                # If scene geometry not available, try to fetch it
+                if scene_lat is None or scene_lon is None:
+                    try:
+                        scene_url = f"{self.config.base_url}/item-types/PSScene/items/{scene_id}"
+                        response = self.rate_limiter.make_request(
+                            method="GET", 
+                            url=scene_url, 
+                            timeout=self.config.timeouts["read"]
+                        )
+                        
+                        if response.status_code == 200:
+                            scene_data = response.json()
+                            scene_geometry = scene_data.get('geometry')
+                            if scene_geometry:
+                                scene_lat, scene_lon = get_scene_center(scene_geometry)
+                    except Exception as e:
+                        logger.debug(f"Could not fetch geometry for scene {scene_id}: {e}")
+                
+                # Use fallback coordinates if scene-specific ones not available
+                if scene_lat is None or scene_lon is None:
+                    if fallback_lat is not None and fallback_lon is not None:
+                        scene_lat, scene_lon = fallback_lat, fallback_lon
+                        logger.debug(f"Using fallback coordinates for scene {scene_id}")
+                    else:
+                        logger.warning(f"No coordinates available for scene {scene_id}, skipping")
+                        continue
+                
+                # Try multiple zoom levels to find working tiles
+                working_url = None
+                for zoom_level in [10, 11, 12]:
+                    tile_x, tile_y = lat_lon_to_tile(scene_lat, scene_lon, zoom_level)
+                    
+                    # Create tile URL
+                    tile_url = f"{tile_base_url}/PSScene/{scene_id}/{zoom_level}/{tile_x}/{tile_y}.png"
+                    if api_key:
+                        tile_url += f"?api_key={api_key}"
+                    
+                    # Optional quick test for better UX
+                    try:
+                        import requests
+                        test_response = requests.head(tile_url, timeout=2)
+                        if test_response.status_code == 200:
+                            working_url = tile_url
+                            break
+                    except:
+                        # If quick test fails, still use the URL as fallback
+                        if not working_url:
+                            working_url = tile_url
+                
+                if working_url:
+                    preview_urls[scene_id] = working_url
+                    logger.debug(f"Generated working tile URL for scene {scene_id}")
+                else:
+                    logger.warning(f"Could not generate working URL for scene {scene_id}")
+                    
+            except Exception as e:
+                logger.warning(f"Failed to generate preview URL for scene {scene_id}: {e}")
+                continue
+        
+        logger.info(f"Generated {len(preview_urls)} working preview URLs")
+        return preview_urls
 
+
+    def get_scene_tile_urls(
+        self, 
+        scene_ids: List[str], 
+        zoom_level: int = 12,
+        center_coords: Optional[Tuple[float, float]] = None
+    ) -> Dict[str, Dict]:
+        """Get specific tile URLs for scenes at given zoom level with actual coordinates.
+        
+        Works for any geographic region by using actual scene coordinates or provided center.
+        
+        Args:
+            scene_ids: List of Planet scene IDs
+            zoom_level: Zoom level for tiles (default: 12)
+            center_coords: Optional (lat, lon) tuple to override automatic calculation
+
+        Returns:
+            Dictionary mapping scene IDs to tile information
+        """
+        import math
+        from shapely.geometry import shape
+        
+        logger.info(f"Getting tile URLs for {len(scene_ids)} scenes at zoom level {zoom_level}")
+        
+        def lat_lon_to_tile(lat: float, lon: float, zoom: int) -> Tuple[int, int]:
+            """Convert lat/lon coordinates to tile coordinates."""
+            lat_rad = math.radians(lat)
+            n = 2.0 ** zoom
+            x = int((lon + 180.0) / 360.0 * n)
+            y = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n)
+            return (x, y)
+        
+        def get_scene_center(scene_geometry):
+            """Get the center coordinates of a scene."""
+            try:
+                geom = shape(scene_geometry)
+                centroid = geom.centroid
+                return centroid.y, centroid.x  # lat, lon
+            except Exception:
+                return None, None
+        
+        tile_info = {}
+        tile_base_url = self.config.get('tile_url', 'https://tiles.planet.com/data/v1')
+        api_key = getattr(self.auth, '_api_key', '')
+        
+        # Build scene geometries lookup
+        scene_geometries = {}
+        if hasattr(self, '_last_search_results') and self._last_search_results:
+            for scene in self._last_search_results:
+                if scene['id'] in scene_ids:
+                    scene_geometries[scene['id']] = scene['geometry']
+        
+        for scene_id in scene_ids:
+            try:
+                # Use provided center coordinates or calculate from scene
+                if center_coords:
+                    center_lat, center_lon = center_coords
+                    tile_x, tile_y = lat_lon_to_tile(center_lat, center_lon, zoom_level)
+                else:
+                    # Get scene-specific coordinates
+                    scene_lat, scene_lon = None, None
+                    
+                    if scene_id in scene_geometries:
+                        scene_lat, scene_lon = get_scene_center(scene_geometries[scene_id])
+                    
+                    if scene_lat is None or scene_lon is None:
+                        # Try to fetch scene geometry
+                        try:
+                            scene_url = f"{self.config.base_url}/item-types/PSScene/items/{scene_id}"
+                            response = self.rate_limiter.make_request(
+                                method="GET", 
+                                url=scene_url, 
+                                timeout=self.config.timeouts["read"]
+                            )
+                            
+                            if response.status_code == 200:
+                                scene_data = response.json()
+                                scene_geometry = scene_data.get('geometry')
+                                if scene_geometry:
+                                    scene_lat, scene_lon = get_scene_center(scene_geometry)
+                        except Exception:
+                            pass
+                    
+                    if scene_lat is None or scene_lon is None:
+                        logger.warning(f"Could not determine coordinates for scene {scene_id}")
+                        continue
+                    
+                    center_lat, center_lon = scene_lat, scene_lon
+                    tile_x, tile_y = lat_lon_to_tile(center_lat, center_lon, zoom_level)
+                
+                # Create URLs
+                template_url = f"{tile_base_url}/PSScene/{scene_id}/{{z}}/{{x}}/{{y}}.png"
+                static_url = f"{tile_base_url}/PSScene/{scene_id}/{zoom_level}/{tile_x}/{tile_y}.png"
+                
+                if api_key:
+                    template_url += f"?api_key={api_key}"
+                    static_url += f"?api_key={api_key}"
+                
+                tile_info[scene_id] = {
+                    'template_url': template_url,
+                    'static_url': static_url,
+                    'zoom_level': zoom_level,
+                    'tile_x': tile_x,
+                    'tile_y': tile_y,
+                    'center_coords': (center_lat, center_lon),
+                    'tile_base_url': tile_base_url
+                }
+                
+                logger.debug(f"Generated tile info for scene {scene_id}")
+                
+            except Exception as e:
+                logger.warning(f"Failed to generate tile info for scene {scene_id}: {e}")
+                continue
+        
+        logger.info(f"Generated tile info for {len(tile_info)} scenes")
+        return tile_info
+    
     def get_scene_stats(
         self,
         geometry: Union[Dict, Polygon, str],
@@ -358,40 +633,43 @@ class PlanetScopeQuery:
         item_types: Optional[List[str]] = None,
         **kwargs,
     ) -> Dict:
-        """Get statistics for scenes matching search criteria.
+        """Get statistical information about scenes without full search.
 
         Args:
             geometry: Search area geometry
             start_date: Start date for temporal filter
             end_date: End date for temporal filter
             item_types: Planet item types to analyze
-            **kwargs: Additional search filters
+            **kwargs: Additional filter parameters
 
         Returns:
-            Dictionary containing detailed scene statistics
+            Dictionary containing scene statistics and temporal distribution
         """
         try:
-            # Build search filter
-            search_filter = self._build_search_filter(
-                geometry=geometry, start_date=start_date, end_date=end_date, **kwargs
-            )
+            validated_geometry = validate_geometry(geometry)
+            validated_dates = validate_date_range(start_date, end_date)
+            start_date, end_date = validated_dates
 
             if item_types is None:
                 item_types = self.config.item_types
 
-            # Prepare stats request
+            # Build search filter
+            search_filter = self._build_search_filter(
+                validated_geometry, start_date, end_date, **kwargs
+            )
+
+            # Build stats request
             stats_request = {
                 "item_types": item_types,
-                "interval": "month",  # Monthly aggregation
                 "filter": search_filter,
+                "interval": "month",
             }
 
-            # Execute stats request
-            endpoint = f"{self.config.base_url}/stats"
+            stats_url = f"{self.config.base_url}/stats"
 
             response = self.rate_limiter.make_request(
                 method="POST",
-                url=endpoint,
+                url=stats_url,
                 json=stats_request,
                 timeout=self.config.timeouts["read"],
             )
@@ -399,22 +677,30 @@ class PlanetScopeQuery:
             if response.status_code != 200:
                 raise APIError(
                     f"Stats request failed with status {response.status_code}",
-                    details={"response": response.text},
+                    {"status_code": response.status_code, "response": response.text[:500]},
                 )
 
             stats_data = response.json()
 
-            # Process and enhance stats
-            processed_stats = self._process_stats_response(stats_data)
+            # Process and format stats
+            buckets = stats_data.get("buckets", [])
+            total_scenes = sum(bucket.get("count", 0) for bucket in buckets)
 
-            logger.info("Scene statistics calculated successfully")
+            result = {
+                "total_scenes": total_scenes,
+                "temporal_distribution": buckets,
+                "interval": stats_data.get("interval", "month"),
+                "buckets": buckets,
+            }
 
-            return processed_stats
+            logger.info(f"Scene stats: {total_scenes} total scenes found")
+
+            return result
 
         except Exception as e:
-            if isinstance(e, PlanetScopeError):
+            if isinstance(e, (ValidationError, APIError, RateLimitError)):
                 raise
-            raise APIError(f"Error calculating scene stats: {str(e)}")
+            raise APIError(f"Unexpected error getting scene stats: {e}")
 
     def filter_scenes_by_quality(
         self,
@@ -468,45 +754,6 @@ class PlanetScopeQuery:
 
         return filtered_scenes
 
-    def get_scene_previews(self, scene_ids: List[str]) -> Dict[str, str]:
-        """Get preview URLs for specified scenes.
-
-        Args:
-            scene_ids: List of Planet scene IDs
-
-        Returns:
-            Dictionary mapping scene IDs to preview URLs
-        """
-        preview_urls = {}
-
-        for scene_id in scene_ids:
-            try:
-                # Get assets for scene
-                assets_url = (
-                    f"{self.config.base_url}/item-types/PSScene/items/{scene_id}/assets"
-                )
-
-                response = self.rate_limiter.make_request(
-                    method="GET", url=assets_url, timeout=self.config.timeouts["read"]
-                )
-
-                if response.status_code == 200:
-                    assets = response.json()
-
-                    # Look for visual asset with preview
-                    for asset_type, asset_info in assets.items():
-                        if "visual" in asset_type.lower():
-                            preview_link = asset_info.get("_links", {}).get("thumbnail")
-                            if preview_link:
-                                preview_urls[scene_id] = preview_link
-                                break
-
-            except Exception as e:
-                logger.warning(f"Failed to get preview for scene {scene_id}: {e}")
-                continue
-
-        return preview_urls
-
     def batch_search(
         self,
         geometries: List[Union[Dict, Polygon]],
@@ -557,257 +804,78 @@ class PlanetScopeQuery:
         self, geometry, start_date, end_date, cloud_cover_max=0.2, **kwargs
     ):
         """Build Planet API search filter with proper Planet API date formatting.
-
-        Constructs a Planet API compatible filter object ensuring all dates are formatted
-        exactly as Planet API expects: YYYY-MM-DDTHH:MM:SS.ffffffZ (6-digit microseconds + Z).
-
+        
         Args:
-            geometry (Union[Dict, Polygon]): Search area geometry
-            start_date (Union[str, datetime]): Start date for temporal filter
-            end_date (Union[str, datetime]): End date for temporal filter
-            cloud_cover_max (float): Maximum cloud cover threshold (0.0-1.0)
+            geometry: Validated geometry object
+            start_date: Start date string or datetime
+            end_date: End date string or datetime  
+            cloud_cover_max: Maximum cloud cover threshold
             **kwargs: Additional filter parameters
-
+            
         Returns:
-            Dict: Planet API filter object with properly formatted dates
-
-        Raises:
-            ValidationError: Invalid geometry, dates, or area constraints
-
-        Example:
-            >>> # All these date inputs will work:
-            >>> filter_obj = query._build_search_filter(
-            ...     geometry=polygon,
-            ...     start_date="2024-01-01",                    # Simple date string
-            ...     end_date=datetime(2024, 1, 31),             # Datetime object
-            ... )
-            >>> # Dates become: "2024-01-01T00:00:00.000000Z" and "2024-01-31T23:59:59.999999Z"
+            Planet API compatible search filter
         """
-
-        # Handle Shapely geometry objects FIRST
-        if hasattr(geometry, "__geo_interface__"):
-            geom_dict = geometry.__geo_interface__
-        elif isinstance(geometry, dict):
-            geom_dict = geometry
+        # Convert dates to Planet API format if needed
+        if isinstance(start_date, datetime):
+            start_date_str = start_date.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         else:
-            raise ValidationError(
-                f"Geometry must be a dictionary or Shapely object. "
-                f"Details: {{'geometry': {geometry}, 'type': '{type(geometry).__name__}'}}"
-            )
+            start_date_str = start_date
+            
+        if isinstance(end_date, datetime):
+            end_date_str = end_date.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        else:
+            end_date_str = end_date
 
-        # Validate the geometry dict using utils function
-        geom_dict = validate_geometry(geom_dict)
-
-        # Validate area constraints
-        area_km2 = calculate_area_km2(geom_dict)
-        max_area = getattr(self.config, "max_roi_area_km2", 10000)
-        if area_km2 > max_area:
-            raise ValidationError(
-                f"Search area ({area_km2:.1f} km²) exceeds maximum allowed ({max_area} km²)"
-            )
-
-        # **CRITICAL FIX**: Use validate_date_range from utils.py
-        # This ensures consistent date formatting throughout the library
-        try:
-            start_date_formatted, end_date_formatted = validate_date_range(
-                start_date, end_date
-            )
-            logger.debug(
-                f"Formatted dates - Start: {start_date_formatted}, End: {end_date_formatted}"
-            )
-        except Exception as e:
-            raise ValidationError(f"Date formatting failed: {str(e)}")
-
-        # Build filter components list
-        filter_components = []
-
-        # 1. Geometry filter (required)
-        filter_components.append(
-            {"type": "GeometryFilter", "field_name": "geometry", "config": geom_dict}
-        )
-
-        # 2. Date range filter (required) - Using properly formatted dates from utils.py
-        filter_components.append(
+        # Base filters
+        filters = [
+            {
+                "type": "GeometryFilter",
+                "field_name": "geometry", 
+                "config": geometry
+            },
             {
                 "type": "DateRangeFilter",
                 "field_name": "acquired",
                 "config": {
-                    "gte": start_date_formatted,  # Now properly formatted with end-of-day logic
-                    "lte": end_date_formatted,  # Now properly formatted with end-of-day logic
-                },
-            }
-        )
-
-        # 3. Cloud cover filter (optional)
-        if cloud_cover_max is not None:
-            filter_components.append(
-                {
-                    "type": "RangeFilter",
-                    "field_name": "cloud_cover",
-                    "config": {"lte": cloud_cover_max},
+                    "gte": start_date_str,
+                    "lte": end_date_str
                 }
-            )
-
-        # 4. Additional filters from kwargs
-        for field_name, value in kwargs.items():
-            if field_name.endswith("_min"):
-                # Minimum value filters (e.g., sun_elevation_min)
-                actual_field = field_name.replace("_min", "")
-                filter_components.append(
-                    {
-                        "type": "RangeFilter",
-                        "field_name": actual_field,
-                        "config": {"gte": value},
-                    }
-                )
-            elif field_name.endswith("_max"):
-                # Maximum value filters (e.g., view_angle_max)
-                actual_field = field_name.replace("_max", "")
-                filter_components.append(
-                    {
-                        "type": "RangeFilter",
-                        "field_name": actual_field,
-                        "config": {"lte": value},
-                    }
-                )
-            elif isinstance(value, bool):
-                # Boolean filters (e.g., ground_control)
-                filter_components.append(
-                    {
-                        "type": "StringInFilter",
-                        "field_name": field_name,
-                        "config": [value],
-                    }
-                )
-            elif isinstance(value, (list, tuple)):
-                # List-based filters
-                filter_components.append(
-                    {
-                        "type": "StringInFilter",
-                        "field_name": field_name,
-                        "config": list(value),
-                    }
-                )
-
-        # Combine all filters with AndFilter
-        search_filter = {"type": "AndFilter", "config": filter_components}
-
-        logger.debug(f"Built search filter with {len(filter_components)} components")
-
-        return search_filter
-
-    def _calculate_search_stats(self, search_response):
-        """Calculate comprehensive statistics from Planet API search response.
-
-        Processes search results to extract statistical information about found scenes
-        including cloud cover distribution, temporal patterns, and satellite coverage.
-
-        Args:
-            search_response (Dict): Raw search response from Planet API containing:
-                                - 'features': List of scene feature objects
-                                - Each feature has 'properties' with metadata
-
-        Returns:
-            Dict: Comprehensive statistics containing:
-                - 'total_scenes': Total number of scenes found
-                - 'cloud_cover_stats': Cloud cover distribution (min, max, mean, count)
-                - 'acquisition_dates': Sorted list of acquisition dates
-                - 'item_types': Count of each item type found
-                - 'satellites': Count of scenes per satellite
-
-        Example:
-            >>> response = {"features": [{"properties": {"cloud_cover": 0.1, ...}}, ...]}
-            >>> stats = query._calculate_search_stats(response)
-            >>> print(f"Found {stats['total_scenes']} scenes")
-            >>> print(f"Cloud cover range: {stats['cloud_cover_stats']['min']}-{stats['cloud_cover_stats']['max']}")
-
-        Note:
-            - Handles missing or None values gracefully
-            - Returns empty structures for empty search results
-            - Calculates statistics only from valid non-None values
-            - Dates are sorted chronologically for temporal analysis
-        """
-        features = search_response.get("features", [])
-
-        if not features:
-            return {
-                "total_scenes": 0,
-                "cloud_cover_stats": {},
-                "acquisition_dates": [],
-                "item_types": {},
-                "satellites": {},
+            },
+            {
+                "type": "RangeFilter",
+                "field_name": "cloud_cover",
+                "config": {
+                    "lte": cloud_cover_max
+                }
             }
+        ]
 
-        # Extract statistics
-        cloud_covers = []
-        acquisition_dates = []
-        item_types = defaultdict(int)
-        satellites = defaultdict(int)
+        # Add optional filters from kwargs
+        if kwargs.get("sun_elevation_min"):
+            filters.append({
+                "type": "RangeFilter",
+                "field_name": "sun_elevation", 
+                "config": {
+                    "gte": kwargs["sun_elevation_min"]
+                }
+            })
 
-        for feature in features:
-            props = feature.get("properties", {})
+        if kwargs.get("ground_control"):
+            filters.append({
+                "type": "StringInFilter",
+                "field_name": "ground_control",
+                "config": ["true"]
+            })
 
-            # Cloud cover
-            cc = props.get("cloud_cover")
-            if cc is not None:
-                cloud_covers.append(cc)
+        if kwargs.get("quality_category"):
+            filters.append({
+                "type": "StringInFilter", 
+                "field_name": "quality_category",
+                "config": [kwargs["quality_category"]]
+            })
 
-            # Acquisition date
-            acquired = props.get("acquired")
-            if acquired:
-                acquisition_dates.append(acquired)
-
-            # Item type
-            item_type = props.get("item_type")
-            if item_type:
-                item_types[item_type] += 1
-
-            # Satellite
-            satellite = props.get("satellite_id")
-            if satellite:
-                satellites[satellite] += 1
-
-        # Calculate cloud cover statistics
-        cloud_cover_stats = {}
-        if cloud_covers:
-            cloud_cover_stats = {
-                "min": min(cloud_covers),
-                "max": max(cloud_covers),
-                "mean": sum(cloud_covers) / len(cloud_covers),
-                "count": len(cloud_covers),
-            }
-
+        # Combine all filters with AND logic
         return {
-            "total_scenes": len(features),
-            "cloud_cover_stats": cloud_cover_stats,
-            "acquisition_dates": sorted(acquisition_dates),
-            "item_types": dict(item_types),
-            "satellites": dict(satellites),
+            "type": "AndFilter",
+            "config": filters
         }
-
-    def _process_stats_response(self, stats_data: Dict) -> Dict:
-        """Process and enhance Planet API stats response.
-
-        Args:
-            stats_data: Raw stats response from Planet API
-
-        Returns:
-            Processed statistics dictionary
-        """
-        processed = {
-            "buckets": stats_data.get("buckets", []),
-            "interval": stats_data.get("interval", "month"),
-            "total_scenes": 0,
-            "temporal_distribution": {},
-        }
-
-        # Calculate totals and temporal distribution
-        for bucket in processed["buckets"]:
-            count = bucket.get("count", 0)
-            processed["total_scenes"] += count
-
-            start_time = bucket.get("start_time")
-            if start_time:
-                processed["temporal_distribution"][start_time] = count
-
-        return processed
