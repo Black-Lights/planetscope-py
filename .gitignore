@@ -218,3 +218,15 @@ milan_polygons/
 milan_roi.geojson
 milan_test_small.gpkg
 phase4_test_output/
+milan_*
+planetscope_analysis/
+create_gpkg_*
+output*
+jupyter*
+test_quota_api.py
+temp_*
+test_analysis.gpkg
+download_2_scenes_simple.py
+density.png
+phase4_realistic_output
+generate_tree.py

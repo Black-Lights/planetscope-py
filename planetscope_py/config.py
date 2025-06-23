@@ -21,6 +21,7 @@ class PlanetScopeConfig:
 
     Attributes:
         base_url: Planet Data API base URL
+        tile_url: Planet Tile Service API base URL
         item_types: Default item types for searches
         asset_types: Default asset types for downloads
         rate_limits: API rate limits per endpoint type
@@ -103,6 +104,7 @@ class PlanetScopeConfig:
                 "USERPROFILE", os.environ.get("HOME", os.getcwd())
             )
             config_path = Path(home_dir) / ".planet.json"
+
         if config_path.exists():
             try:
                 with open(config_path, "r") as f:
@@ -141,6 +143,7 @@ class PlanetScopeConfig:
         """Load configuration from environment variables."""
         env_mapping = {
             "PLANETSCOPE_BASE_URL": "base_url",
+            "PLANETSCOPE_TILE_URL": "tile_url",
             "PLANETSCOPE_MAX_RETRIES": "max_retries",
             "PLANETSCOPE_MAX_ROI_AREA": "max_roi_area_km2",
             "PLANETSCOPE_DEFAULT_CRS": "default_crs",
@@ -192,6 +195,7 @@ class PlanetScopeConfig:
         """
         config = {
             "base_url": self.get("base_url", self.BASE_URL),
+            "tile_url": self.get("tile_url", self.TILE_URL),
             "item_types": self.get("item_types", self.DEFAULT_ITEM_TYPES),
             "asset_types": self.get("asset_types", self.DEFAULT_ASSET_TYPES),
             "rate_limits": self.get("rate_limits", self.RATE_LIMITS),
@@ -207,6 +211,11 @@ class PlanetScopeConfig:
     def base_url(self) -> str:
         """Get Planet Data API base URL."""
         return self.get("base_url", self.BASE_URL)
+
+    @property
+    def tile_url(self) -> str:
+        """Get Planet Tile Service API base URL."""
+        return self.get("tile_url", self.TILE_URL)
 
     @property
     def item_types(self) -> List[str]:
