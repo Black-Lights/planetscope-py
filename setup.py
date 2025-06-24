@@ -1,4 +1,5 @@
-"""Setup configuration for planetscope-py."""
+#!/usr/bin/env python3
+"""Setup configuration for planetscope-py v4.0.0."""
 
 from pathlib import Path
 
@@ -26,8 +27,8 @@ install_requires = [
     "pandas>=2.2.3",
     "python-dateutil>=2.9.0",
     "orjson>=3.10.0",
-    # Phase 4 Enhanced Dependencies
-    "xarray>=2024.02.0",              # Temporal analysis data cubes
+    # v4.0.0 Enhanced Dependencies
+    "xarray>=2024.02.0",              # Temporal analysis data structures
     "aiohttp>=3.8.0",                # Async asset downloads
     "geopandas>=1.0.1",             # GeoPackage vector operations
     "fiona>=1.9.0",                  # GeoPackage I/O
@@ -40,29 +41,29 @@ setup(
     version=version_info["__version__"],
     author="Ammar & Umayr",
     author_email="mohammadammarmughees@gmail.com",
-    description="Professional Python library for PlanetScope satellite imagery analysis with enhanced temporal analysis, asset management, and data export capabilities",
+    description="Professional Python library for PlanetScope satellite imagery analysis with complete temporal analysis, spatial density analysis, and advanced data export capabilities",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/Black-Lights/planetscope-py",
     packages=find_packages(),
     classifiers=[
-        "Development Status :: 4 - Beta",  # Phase 4 is in beta
+        "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
         "Topic :: Scientific/Engineering :: GIS",
         "Topic :: Scientific/Engineering :: Image Processing",
         "Topic :: Scientific/Engineering :: Visualization",
-        "Topic :: Scientific/Engineering :: Atmospheric Science",  # NEW: Earth observation
-        "Topic :: Database",  # NEW: GeoPackage support
+        "Topic :: Scientific/Engineering :: Atmospheric Science",
+        "Topic :: Database",
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
-        "Programming Language :: Python :: 3.13",
-        "Programming Language :: Python :: 3.14",
         "Operating System :: OS Independent",
-        "Framework :: AsyncIO",  # NEW: Async support
+        "Framework :: AsyncIO",
+        "Environment :: Console",
+        "Natural Language :: English",
     ],
     python_requires=">=3.10",
     install_requires=install_requires,
@@ -73,7 +74,7 @@ setup(
             "pytest-cov>=6.0.0",
             "pytest-mock>=3.14.0",
             "pytest-xdist>=3.6.0",
-            "pytest-asyncio>=0.24.0",  # NEW: Async testing
+            "pytest-asyncio>=0.24.0",
             # Code quality
             "black>=24.12.0",
             "flake8>=7.2.0",
@@ -96,33 +97,31 @@ setup(
         ],
         "jupyter": [
             "jupyter>=1.1.1",
-            "ipywidgets>=8.1.5",  # Phase 4: Interactive controls
+            "ipywidgets>=8.1.5",
             "notebook>=7.3.1",
             "matplotlib>=3.10.0",
             "folium>=0.19.1",
         ],
-        "spatial": [  # RENAMED from "geospatial" to be more specific
+        "spatial": [
             "geopandas>=1.0.1",
             "rasterio>=1.4.3",
-            "matplotlib>=3.10.0",  # Required for spatial analysis visualization
+            "matplotlib>=3.10.0",
         ],
-        "temporal": [  # NEW: Phase 4 temporal analysis
+        "temporal": [
             "xarray>=2024.02.0",
             "scipy>=1.13.0",
             "seaborn>=0.12.2",
             "matplotlib>=3.10.0",
         ],
-        "asset": [  # NEW: Phase 4 asset management
+        "asset": [
             "aiohttp>=3.8.0",
-            "asyncio",  # Built-in but explicit
         ],
-        "geopackage": [  # NEW: Phase 4 GeoPackage export
+        "geopackage": [
             "geopandas>=1.0.1",
             "fiona>=1.9.0",
             "rasterio>=1.4.3",
-            "sqlite3",  # Built-in but explicit
         ],
-        "interactive": [  # NEW: Phase 4 interactive features
+        "interactive": [
             "ipywidgets>=8.1.5",
             "jupyter>=1.1.1",
         ],
@@ -130,7 +129,7 @@ setup(
             "matplotlib>=3.10.0",
             "folium>=0.19.1",
             "plotly>=5.24.1",
-            "seaborn>=0.12.2",  # NEW: Statistical visualization
+            "seaborn>=0.12.2",
         ],
         "performance": [
             "line-profiler>=4.2.0",
@@ -141,7 +140,7 @@ setup(
             "pytest>=8.3.4",
             "pytest-cov>=6.0.0",
             "pytest-mock>=3.14.0",
-            "pytest-asyncio>=0.24.0",  # NEW: Async testing
+            "pytest-asyncio>=0.24.0",
             "black>=24.12.0",
             "flake8>=7.2.0",
             "mypy>=1.13.0",
@@ -149,22 +148,17 @@ setup(
             "sphinx>=8.1.3",
             "sphinx-rtd-theme>=3.0.2",
             "jupyter>=1.1.1",
-            "ipywidgets>=8.1.5",  # NEW: Interactive controls
+            "ipywidgets>=8.1.5",
             "matplotlib>=3.10.0",
             "folium>=0.19.1",
             "geopandas>=1.0.1",
             "rasterio>=1.4.3",
             "plotly>=5.24.1",
-            "seaborn>=0.12.2",  # NEW: Statistical visualization
-            # Phase 4 specific
-            "xarray>=2024.02.0",  # NEW: Temporal analysis
-            "aiohttp>=3.8.0",     # NEW: Async downloads
-            "scipy>=1.13.0",       # NEW: Statistical analysis
-        ],
-    },
-    entry_points={
-        "console_scripts": [
-            "planetscope=planetscope_py.cli:main",
+            "seaborn>=0.12.2",
+            # v4.0.0 specific
+            "xarray>=2024.02.0",
+            "aiohttp>=3.8.0",
+            "scipy>=1.13.0",
         ],
     },
     package_data={
@@ -172,6 +166,11 @@ setup(
     },
     include_package_data=True,
     zip_safe=False,
+    entry_points={
+        "console_scripts": [
+            "planetscope=planetscope_py.cli:main",
+        ],
+    },
     keywords=[
         "satellite",
         "imagery",
@@ -183,24 +182,26 @@ setup(
         "gis",
         "spatial-analysis",
         "density-analysis",
+        "temporal-analysis",
         "rasterization",
         "vector-overlay",
         "adaptive-grid",
         "visualization",
-        # Phase 4 keywords
-        "temporal-analysis",      # NEW: Temporal capabilities
-        "asset-management",       # NEW: Asset handling
-        "geopackage",            # NEW: GeoPackage export
-        "async-downloads",       # NEW: Async operations
-        "quota-monitoring",      # NEW: Quota tracking
-        "spatiotemporal",        # NEW: 3D data cubes
-        "seasonal-patterns",     # NEW: Temporal patterns
-        "interactive-widgets",   # NEW: Interactive controls
+        "asset-management",
+        "geopackage",
+        "async-downloads",
+        "quota-monitoring",
+        "grid-based-analysis",
+        "coordinate-system-fixes",
+        "scene-footprints",
+        "metadata-processing",
+        "quality-assessment",
     ],
     project_urls={
         "Bug Reports": "https://github.com/Black-Lights/planetscope-py/issues",
         "Source": "https://github.com/Black-Lights/planetscope-py",
         "Documentation": "https://github.com/Black-Lights/planetscope-py/wiki",
         "Changelog": "https://github.com/Black-Lights/planetscope-py/blob/main/CHANGELOG.md",
+        "PyPI": "https://pypi.org/project/planetscope-py/",
     },
 )

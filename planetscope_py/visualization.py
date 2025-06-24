@@ -591,11 +591,14 @@ class DensityVisualizer:
         roi_polygon: Optional[Polygon] = None,
         save_path: Optional[str] = None,
         clip_to_roi: bool = True,
-        max_scenes_footprint: int = 150,  # INCREASED default
-        show_plot: bool = True
+        max_scenes_footprint: int = 150,
+        show_plot: bool = True,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        cloud_cover_max: Optional[float] = None
     ) -> plt.Figure:
         """
-        Create enhanced multi-panel summary plot with FIXED orientation and increased limits.
+        Create enhanced multi-panel summary plot with time period and cloud cover info.
 
         Args:
             density_result: DensityResult object
@@ -603,8 +606,11 @@ class DensityVisualizer:
             roi_polygon: Optional ROI polygon
             save_path: Optional path to save plot
             clip_to_roi: Whether to clip outputs to ROI shape
-            max_scenes_footprint: Maximum scenes in footprint plot (INCREASED: 150)
+            max_scenes_footprint: Maximum scenes in footprint plot
             show_plot: Whether to show the plot
+            start_date: Analysis start date (for summary table)
+            end_date: Analysis end date (for summary table)
+            cloud_cover_max: Maximum cloud cover threshold used (for summary table)
 
         Returns:
             Matplotlib figure object
@@ -631,31 +637,28 @@ class DensityVisualizer:
                 no_data_value
             )
 
-        # FIXED: Prepare array for correct display
+        # Prepare array for correct display
         plot_array = self._prepare_display_array(display_array, no_data_value)
 
-        # 1. FIXED density map with correct orientation
+        # 1. Density map with correct orientation
         bounds = density_result.bounds
         extent = [bounds[0], bounds[2], bounds[1], bounds[3]]
 
         im1 = ax1.imshow(
-            plot_array,  # Use corrected array
+            plot_array,
             extent=extent,
-            cmap="turbo",  # Changed to turbo
-            origin="lower",  # Correct origin for geographic data
+            cmap="turbo",
+            origin="lower",
             interpolation="nearest",
         )
 
         title1 = "Density Map"
         if clip_to_roi and roi_polygon is not None:
             title1 += " (ROI Clipped)"
-            # Add ROI boundary - THIS IS THE FIX
             x, y = roi_polygon.exterior.xy
             ax1.plot(x, y, 'r-', linewidth=2, alpha=0.8, label='ROI Boundary')
             ax1.legend()
-        # ADD THIS ELIF BLOCK - this was missing in your summary plot:
         elif roi_polygon is not None:
-            # Even if not clipping, show ROI boundary for reference
             title1 += " (Full Grid)"
             x, y = roi_polygon.exterior.xy
             ax1.plot(x, y, 'r-', linewidth=2, alpha=0.8, label='ROI Boundary')
@@ -670,7 +673,6 @@ class DensityVisualizer:
         valid_data = display_array[display_array != no_data_value]
 
         if len(valid_data) > 0:
-            # Calculate proper bins
             n_bins, (min_val, max_val) = self.calculate_histogram_bins(
                 display_array, no_data_value
             )
@@ -717,24 +719,22 @@ class DensityVisualizer:
             )
             ax2.set_title("Density Distribution")
 
-        # 3. Enhanced statistics summary
+        # 3. Enhanced statistics summary with time period and cloud cover
         if hasattr(density_result, "stats") and "error" not in density_result.stats:
             stats = density_result.stats
 
-            # Always calculate meaningful statistics from the display data (what user sees)
+            # Calculate meaningful statistics from the display data
             if clip_to_roi and roi_polygon is not None:
-                # Use ROI-clipped data (what's actually shown in the density map)
                 analysis_data = display_array[display_array != no_data_value]
                 stats_title = "ROI Analysis Results"
                 coverage_note = f"Analysis of {len(analysis_data):,} pixels within ROI"
             else:
-                # Use full grid data
                 analysis_data = density_array[density_array != no_data_value]
                 stats_title = "Full Grid Analysis Results" 
                 coverage_note = f"Analysis of {len(analysis_data):,} total pixels"
 
             if len(analysis_data) > 0:
-                # Calculate the meaningful statistics you want
+                # Build enhanced statistics data with time period and cloud cover
                 stats_data = [
                     ["Pixels Analyzed", f"{len(analysis_data):,}"],
                     ["Density Range", f"{np.min(analysis_data):.1f} - {np.max(analysis_data):.1f}"],
@@ -743,6 +743,31 @@ class DensityVisualizer:
                     ["Std Deviation", f"{np.std(analysis_data):.2f}"],
                     ["Total Scenes", f"{np.sum(analysis_data):.0f}"],
                     ["", ""],  # Separator
+                ]
+                
+                # Add time period information if available
+                if start_date and end_date:
+                    # Format dates for display
+                    try:
+                        from datetime import datetime
+                        start_formatted = datetime.fromisoformat(start_date.replace('Z', '+00:00')).strftime('%Y-%m-%d')
+                        end_formatted = datetime.fromisoformat(end_date.replace('Z', '+00:00')).strftime('%Y-%m-%d')
+                        time_period_display = f"{start_formatted} to {end_formatted}"
+                    except:
+                        time_period_display = f"{start_date} to {end_date}"
+                    
+                    stats_data.append(["Time Period", time_period_display])
+                
+                # Add cloud cover threshold if available
+                if cloud_cover_max is not None:
+                    cloud_cover_percent = f"{cloud_cover_max * 100:.0f}%"
+                    stats_data.append(["Max Cloud Cover", cloud_cover_percent])
+                
+                if start_date or cloud_cover_max is not None:
+                    stats_data.append(["", ""])  # Separator
+                
+                # Add technical information
+                stats_data.extend([
                     ["Method", (
                         getattr(density_result, "method_used", "Unknown").value
                         if hasattr(getattr(density_result, "method_used", None), "value")
@@ -750,8 +775,8 @@ class DensityVisualizer:
                     )],
                     ["Computation Time", f"{getattr(density_result, 'computation_time', 0):.2f}s"],
                     ["Grid Resolution", f"{density_result.grid_info.get('resolution', 'N/A')}m"],
-                    ["Grid Dimensions", f"{density_result.grid_info.get('width', 0)}×{density_result.grid_info.get('height', 0)}"],
-                ]
+                    ["Grid Dimensions", f"{density_result.grid_info.get('width', 0)}x{density_result.grid_info.get('height', 0)}"],
+                ])
             else:
                 stats_data = [["No valid data", "N/A"]]
 
@@ -772,7 +797,7 @@ class DensityVisualizer:
             ax3.set_ylim(0, 1)
             ax3.axis("off")
 
-            # Create clean table with your meaningful statistics
+            # Create clean table with enhanced statistics
             table_data = []
             colors = []
             for label, value in stats_data:
@@ -783,6 +808,8 @@ class DensityVisualizer:
                 # Color coding for different types of information
                 if label in ["Pixels Analyzed", "Density Range", "Mean Density", "Median Density", "Std Deviation", "Total Scenes"]:
                     colors.append(["lightblue", "white"])  # Main analysis results
+                elif label in ["Time Period", "Max Cloud Cover"]:
+                    colors.append(["lightgreen", "white"])  # Query parameters
                 else:
                     colors.append(["lightgray", "white"])  # Technical info
 
@@ -793,7 +820,7 @@ class DensityVisualizer:
                     cellLoc="left",
                     loc="center",
                     colWidths=[0.5, 0.4],
-                    bbox=[0.0, 0.0, 1.0, 0.82]  # Adjusted for title and note
+                    bbox=[0.0, 0.0, 1.0, 0.82]
                 )
                 table.auto_set_font_size(False)
                 table.set_fontsize(9)
@@ -810,14 +837,13 @@ class DensityVisualizer:
             ax3.set_title("Analysis Results", pad=20)
             ax3.axis("off")
 
-        # 4. ENHANCED scene footprints with INCREASED limits
+        # 4. Scene footprints with increased limits
         if has_footprints:
             intersecting_scenes = [
                 scene for scene in scene_polygons 
                 if scene.intersects(roi_polygon)
             ]
             
-            # INCREASED sampling limits - now supports up to 1000+ scenes
             if len(intersecting_scenes) > max_scenes_footprint:
                 import random
                 random.seed(42)
@@ -1811,7 +1837,7 @@ def validate_visualization_fixes():
     Returns:
         dict: Validation results
     """
-    print("🔧 VALIDATING ENHANCED VISUALIZATION FIXES")
+    print(" VALIDATING ENHANCED VISUALIZATION FIXES")
     print("=" * 50)
     
     validation_results = {
@@ -1875,13 +1901,13 @@ def validate_visualization_fixes():
         
         print("\n" + "=" * 50)
         if validation_results['overall_status']:
-            print("🎉 ALL VALIDATION TESTS PASSED!")
+            print(" ALL VALIDATION TESTS PASSED!")
             print("Enhanced visualization library is fully functional!")
         else:
-            print("❌ Some validation tests failed!")
+            print(" Some validation tests failed!")
             
     except Exception as e:
-        print(f"❌ Validation failed with error: {e}")
+        print(f" Validation failed with error: {e}")
         validation_results['overall_status'] = False
     
     return validation_results
@@ -1905,9 +1931,9 @@ if __name__ == "__main__":
     validation_results = validate_visualization_fixes()
     
     if validation_results['overall_status']:
-        print("\n🚀 LIBRARY READY FOR USE!")
+        print("\n LIBRARY READY FOR USE!")
         print("Example usage:")
         print("from planetscope_py import quick_planet_analysis")
         print("result = quick_planet_analysis(milan_polygon, 'last_month', max_scenes_footprint=300)")
     else:
-        print("\n⚠️ Please check validation results before use.")
+        print("\n Please check validation results before use.")

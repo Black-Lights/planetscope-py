@@ -80,25 +80,40 @@ def parse_time_period(time_period: Union[str, tuple]) -> Tuple[str, str]:
 
 
 def parse_roi_input(roi_input: Union[str, Polygon, list, dict]) -> Polygon:
-    """Parse various ROI input formats into a Shapely Polygon."""
-    if isinstance(roi_input, Polygon):
-        return roi_input
+    """
+    Parse various ROI input formats into a Shapely Polygon.
     
-    if isinstance(roi_input, list):
-        return Polygon(roi_input)
+    This function now leverages the enhanced validate_geometry() from utils.py
+    which already handles shapefiles, GeoJSON files, WKT strings, etc.
+    """
+    from .utils import validate_geometry
+    from shapely.geometry import shape
     
-    if isinstance(roi_input, dict):
-        if "coordinates" in roi_input:
-            coords = roi_input["coordinates"][0]
-            return Polygon(coords)
-    
-    if isinstance(roi_input, str):
-        raise ValidationError(
-            f"String ROI '{roi_input}' requires geocoding. "
-            "Please provide coordinates as Polygon or list."
-        )
-    
-    raise ValidationError(f"Unsupported ROI format: {type(roi_input)}")
+    try:
+        # Use the enhanced validate_geometry function which handles:
+        # - File paths (.shp, .geojson, .wkt, .txt)
+        # - Shapely objects
+        # - GeoJSON dictionaries
+        # - WKT strings
+        validated_geom = validate_geometry(roi_input)
+        
+        # Convert the validated GeoJSON geometry to Shapely Polygon
+        polygon = shape(validated_geom)
+        
+        # Ensure it's a Polygon (not MultiPolygon, etc.)
+        if polygon.geom_type == 'MultiPolygon':
+            # Take the largest polygon
+            polygons = list(polygon.geoms)
+            polygon = max(polygons, key=lambda p: p.area)
+        elif polygon.geom_type != 'Polygon':
+            raise ValidationError(f"ROI must be a Polygon, got {polygon.geom_type}")
+        
+        return polygon
+        
+    except Exception as e:
+        if isinstance(e, ValidationError):
+            raise
+        raise ValidationError(f"Failed to parse ROI input: {e}")
 
 
 def create_output_directory(base_dir: str) -> str:
@@ -259,24 +274,25 @@ def analyze_density(
         logger.info(f"Density calculated ({analysis_type}): {density_result.stats['mean']:.1f} avg scenes/pixel")
 
             
-        # 5. Create Enhanced Visualizations with FIXES
+        # 5. Create visualizations (FIXED coordinate system)
         if create_visualizations:
-            logger.info("Generating enhanced visualizations with coordinate fixes")
-            
+            logger.info("Creating enhanced visualizations with coordinate fixes")
             visualizer = DensityVisualizer()
             
-            # Create comprehensive summary plot with FIXED orientation and increased limits
-            summary_path = os.path.join(output_path, "density_analysis_summary.png")
-            fig = visualizer.create_summary_plot(
-                density_result,
+            # Create summary plot with time period and cloud cover information
+            summary_fig = visualizer.create_summary_plot(
+                density_result=density_result,
                 scene_polygons=scene_polygons,
                 roi_polygon=roi_poly,
-                save_path=summary_path,
+                save_path=os.path.join(output_path, "summary_plot.png"),
                 clip_to_roi=clip_to_roi,
-                max_scenes_footprint=max_scenes_footprint,  # Use increased limit
-                show_plot=show_plots  # Don't show in workflow, save for later
+                max_scenes_footprint=max_scenes_footprint,
+                show_plot=show_plots,
+                start_date=start_date,  # Pass the start date
+                end_date=end_date,      # Pass the end date
+                cloud_cover_max=cloud_cover_max  # Pass the cloud cover threshold
             )
-            results['visualizations']['summary'] = summary_path
+            results['visualizations']['summary'] = summary_fig
             
             # Individual plots with FIXES
             density_plot_path = os.path.join(output_path, "density_map.png")

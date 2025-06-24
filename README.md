@@ -4,7 +4,7 @@ A professional Python library for PlanetScope satellite imagery analysis, provid
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Library Status](https://img.shields.io/badge/Library%20Status-Production-green.svg)](#current-status)
-[![Spatial Analysis](https://img.shields.io/badge/Spatial%20Analysis-Enhanced-green.svg)](#enhanced-spatial-analysis)
+[![Spatial Analysis](https://img.shields.io/badge/Spatial%20Analysis-Complete-green.svg)](#spatial-analysis-complete)
 [![Temporal Analysis](https://img.shields.io/badge/Temporal%20Analysis-Complete-green.svg)](#temporal-analysis-complete)
 [![Asset Management](https://img.shields.io/badge/Asset%20Management-Complete-green.svg)](#asset-management-complete)
 [![Test Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](#testing)
@@ -12,36 +12,53 @@ A professional Python library for PlanetScope satellite imagery analysis, provid
 
 ## Status
 
-**Current Status**: Enhanced Spatial Analysis with Coordinate Fixes & One-Line Functions  
+**Current Status**: Complete Temporal Analysis & Advanced Data Management  
 **Version**: 4.0.0  
 **Test Coverage**: 349 tests passing (100%)  
 **API Integration**: Fully functional with real Planet API  
-**Spatial Analysis**: Enhanced with coordinate system fixes and one-line functions  
-**Temporal Analysis**: 3D data cubes, seasonal patterns, gap analysis  
+**Spatial Analysis**: Multi-algorithm density calculations with coordinate system fixes  
+**Temporal Analysis**: Grid-based temporal pattern analysis with performance optimization  
 **Asset Management**: Quota monitoring, downloads, progress tracking  
 **GeoPackage Export**: Scene polygons with imagery support  
 **Python Support**: 3.10+  
 **License**: MIT  
 
-## Enhanced Features (v4.0+)
+## Key Features (v4.0.0)
 
-### Coordinate System Fixes
-- **Fixed coordinate system display** - No more mirrored/flipped maps
-- **Proper north-to-south orientation** with corrected transforms
-- **Geographic alignment** with northwest origin positioning
-- **Automatic coordinate validation** for all analysis methods
+### File-Based ROI Support (NEW in v4.0.0)
+- **Shapefile Input**: Direct `.shp` file support with automatic CRS reprojection to WGS84
+- **GeoJSON Files**: Support for `.geojson` file input with FeatureCollection handling  
+- **WKT Support**: WKT string input and `.wkt` file support
+- **Multi-Feature Handling**: Automatic union of multiple features in shapefiles and GeoJSON files
+- **Universal Compatibility**: All analysis functions support file-based ROI input
 
-### Enhanced Performance & Limits
-- **Rasterization as optimized default** - Changed from vector overlay for better performance
-- **Increased scene footprint limits** - 150+ default (up to 1000+) in visualizations
-- **Enhanced memory management** - Improved chunking and optimization
-- **Robust error handling** - PROJ/CRS compatibility with multiple fallbacks
+### Complete Temporal Analysis Engine
+- **Grid-Based Temporal Pattern Analysis**: Complete temporal analysis using coordinate-corrected grid approach
+- **Multiple Temporal Metrics**: Coverage days, mean/median intervals, temporal density, and frequency analysis
+- **Performance Optimization**: FAST and ACCURATE methods with automatic selection
+- **Professional Outputs**: GeoTIFF export with QGIS styling and comprehensive metadata
+- **ROI Integration**: Full integration with coordinate system fixes and flexible input formats
 
-### One-Line Functions
-- **Individual plot access** - Single command for specific visualizations
-- **Simplified workflows** - Complete analysis in one line
-- **Enhanced exports** - Direct GeoTIFF + QML file generation
-- **Dynamic histogram bins** - No more fixed 11-19 ranges
+### Enhanced Spatial Analysis Engine
+- **Multi-Algorithm Density Calculation**: Rasterization, vector overlay, and adaptive grid methods
+- **Automatic Method Selection**: Intelligent algorithm selection based on dataset characteristics
+- **High-Resolution Support**: 3m to 1000m grid resolutions with sub-pixel accuracy
+- **Performance Optimization**: Memory-efficient processing with configurable limits
+- **Coordinate System Fixes**: Proper north-to-south orientation with corrected transforms
+
+### Advanced Asset Management
+- **Intelligent Quota Monitoring**: Real-time tracking of Planet subscription usage
+- **Async Download Management**: Parallel downloads with retry logic and progress tracking
+- **ROI Clipping Integration**: Automatic scene clipping during download process
+- **User Confirmation System**: Interactive prompts with quota impact calculations
+- **Download Verification**: Integrity checking for downloaded assets
+
+### Professional Data Export
+- **GeoPackage Creation**: Comprehensive GeoPackage files with metadata integration
+- **Multi-Layer Support**: Vector polygons and raster imagery in standardized files
+- **GIS Software Integration**: Direct compatibility with QGIS, ArcGIS, and other tools
+- **Comprehensive Metadata**: Rich attribute schemas with quality metrics
+- **Flexible Schemas**: Support for minimal, standard, and comprehensive attribute schemas
 
 ## Overview
 
@@ -49,92 +66,338 @@ PlanetScope-py is designed for remote sensing researchers, GIS analysts, and Ear
 
 ## Quick Start
 
-### Ultra-Simple Analysis (One-Line)
+### Basic Scene Search
+
+#### Method 1: Direct Geometry Definition
 ```python
-from planetscope_py import quick_planet_analysis
-from shapely.geometry import box
+from planetscope_py import PlanetScopeQuery
 
-# Milan area ROI
-milan_roi = box(9.04, 45.40, 9.28, 45.52)
-
-# Complete analysis with enhanced coordinate fixes
-result = quick_planet_analysis(milan_roi, "last_month")
-
-print(f"Found {result['scenes_found']} scenes")
-print(f"Mean density: {result['summary']['mean_density']:.1f} scenes/pixel")
-print(f"Coordinate fixes applied: {result['summary'].get('coordinate_system_corrected', False)}")
-```
-
-### One-Line Individual Functions
-```python
-from planetscope_py import plot_density_map_only, plot_footprints_only, export_geotiff_only
-
-# Just get density map (coordinate-corrected)
-fig = plot_density_map_only(milan_roi, "last_month", "density.png")
-
-# Just get scene footprints (enhanced limits: 300+ scenes)
-fig = plot_footprints_only(milan_roi, "last_month", max_scenes=500)
-
-# Just export GeoTIFF + QML files (coordinate fixes included)
-success = export_geotiff_only(milan_roi, "last_month", "output.tif")
-```
-
-### Enhanced Spatial Density Analysis
-```python
-from planetscope_py import PlanetScopeQuery, SpatialDensityEngine, DensityConfig, DensityMethod
-from shapely.geometry import box
-
-# 1. First, search for scenes
+# Initialize query system (automatically detects API key)
 query = PlanetScopeQuery()
+
+# Define area of interest (example: Milan, Italy)
 milan_geometry = {
     "type": "Point",
-    "coordinates": [9.1900, 45.4642]
+    "coordinates": [9.1900, 45.4642]  # [longitude, latitude]
 }
 
+# Search for scenes
 results = query.search_scenes(
     geometry=milan_geometry,
     start_date="2025-01-01",
     end_date="2025-01-31",
-    cloud_cover_max=0.2
+    cloud_cover_max=0.2,  # 20% maximum cloud cover
+    item_types=["PSScene"]
 )
 
-# 2. Define region of interest and configure analysis
+# Check results
+print(f"Found {len(results['features'])} scenes")
+```
+
+#### Method 2: File-Based ROI (NEW in v4.0.0)
+```python
+from planetscope_py import PlanetScopeQuery
+
+# Initialize query system (automatically detects API key)
+query = PlanetScopeQuery()
+
+# Use shapefile directly as ROI
+results = query.search_scenes(
+    geometry=r'C:\path\to\study_area.shp',  # Direct file path support
+    start_date="2025-01-01",
+    end_date="2025-01-31",
+    cloud_cover_max=0.2,  # 20% maximum cloud cover
+    item_types=["PSScene"]
+)
+
+print(f"Found {len(results['features'])} scenes")
+```
+
+### Spatial Density Analysis
+```python
+from planetscope_py import SpatialDensityEngine, DensityConfig, DensityMethod
+from shapely.geometry import box
+
+# Define region of interest
 roi = box(9.04, 45.40, 9.28, 45.52)  # Milan bounding box
 
-# Enhanced configuration with coordinate fixes
+# Configure spatial analysis
 config = DensityConfig(
-    resolution=30.0,                          # Optimized default resolution
-    method=DensityMethod.RASTERIZATION,       # Enhanced default method
-    coordinate_system_fixes=True,             # Enable coordinate fixes (default)
-    chunk_size_km=200.0,                      # Enhanced chunk size
-    max_memory_gb=16.0,                       # Enhanced memory limit
-    parallel_workers=4                        # Parallel processing
+    resolution=30.0,  # 30m grid resolution
+    method=DensityMethod.AUTO  # Automatic method selection
 )
 
-# 3. Initialize enhanced spatial analysis engine
+# Initialize spatial analysis engine
 engine = SpatialDensityEngine(config)
 
-# Calculate spatial density with coordinate fixes
+# Calculate spatial density
 density_result = engine.calculate_density(
     scene_footprints=results['features'],
     roi_geometry=roi
 )
 
 print(f"Analysis completed using {density_result.method_used.value} method")
-print(f"Coordinate fixes applied: {density_result.coordinate_system_corrected}")
 print(f"Grid size: {density_result.grid_info['width']}×{density_result.grid_info['height']}")
 print(f"Density range: {density_result.stats['min']}-{density_result.stats['max']} scenes per cell")
+```
 
-# 4. Enhanced visualization with scene limits
-from planetscope_py.visualization import DensityVisualizer
+### Temporal Analysis Engine (NEW in v4.0.0)
 
-visualizer = DensityVisualizer()
-fig = visualizer.create_summary_plot(
-    density_result=density_result,
-    roi_polygon=roi,
-    max_scenes_footprint=300,                 # Enhanced scene limits go here
-    show_plot=True
+#### Method 1: Direct Geometry Definition
+```python
+from planetscope_py import TemporalAnalyzer, TemporalConfig, TemporalMetric
+
+# Configure temporal analysis
+config = TemporalConfig(
+    spatial_resolution=100.0,
+    metrics=[TemporalMetric.COVERAGE_DAYS, TemporalMetric.MEAN_INTERVAL],
+    optimization_method="auto"  # FAST or ACCURATE method selection
 )
+
+analyzer = TemporalAnalyzer(config)
+
+# Analyze temporal patterns
+temporal_result = analyzer.analyze_temporal_patterns(
+    scene_footprints=results['features'],
+    roi_geometry=roi,
+    start_date="2025-01-01",
+    end_date="2025-01-31"
+)
+
+print(f"Analysis completed in {temporal_result.computation_time:.1f} seconds")
+print(f"Mean coverage days: {temporal_result.temporal_stats['mean_coverage_days']:.1f}")
+print(f"Temporal metrics calculated: {len(temporal_result.metric_arrays)}")
+```
+
+#### Method 2: File-Based ROI with One-Line Function (NEW in v4.0.0)
+```python
+from planetscope_py import analyze_roi_temporal_patterns
+
+# Complete temporal analysis with shapefile input
+result = analyze_roi_temporal_patterns(
+    r'C:\path\to\milan_roi.shp',  # Shapefile input
+    "2025-01-01/2025-03-31",
+    spatial_resolution=500,
+    optimization_level="fast",  # Use FAST vectorized method
+    clip_to_roi=True,
+    cloud_cover_max=0.3,
+    create_visualizations=True  # Creates comprehensive 4-panel summary
+)
+
+print(f"Found {result['scenes_found']} scenes")
+print(f"Mean coverage days: {result['temporal_result'].temporal_stats['mean_coverage_days']:.1f}")
+print(f"Computation time: {result['temporal_result'].computation_time:.1f} seconds")
+print(f"Output directory: {result['output_directory']}")
+```
+
+### Asset Management
+```python
+from planetscope_py import AssetManager
+
+# Initialize asset manager
+asset_manager = AssetManager()
+
+# Check quota information
+quota_info = await asset_manager.get_quota_info()
+print(f"Available area: {quota_info.remaining_area_km2:.1f} km²")
+
+# Download assets with ROI clipping
+if quota_info.remaining_area_km2 > 100:
+    downloads = await asset_manager.activate_and_download_assets(
+        scenes=results['features'][:10],
+        asset_types=["ortho_analytic_4b"],
+        clip_to_roi=roi  # Optional ROI clipping
+    )
+    print(f"Downloaded {len(downloads)} assets")
+```
+
+### GeoPackage Export
+```python
+from planetscope_py import GeoPackageManager, GeoPackageConfig
+
+# Configure GeoPackage export
+geopackage_config = GeoPackageConfig(
+    include_imagery=True,      # Include downloaded imagery
+    clip_to_roi=True,         # Clip images to ROI
+    attribute_schema="comprehensive"  # Full metadata attributes
+)
+
+# Initialize GeoPackage manager
+geopackage_manager = GeoPackageManager(config=geopackage_config)
+
+# Create comprehensive GeoPackage
+output_path = "milan_analysis.gpkg"
+layer_info = geopackage_manager.create_scene_geopackage(
+    scenes=results['features'],
+    output_path=output_path,
+    roi=roi,
+    downloaded_files=downloads if 'downloads' in locals() else None
+)
+
+print(f"Created GeoPackage: {output_path}")
+print(f"Vector layer: {layer_info.feature_count} scene polygons")
+if geopackage_config.include_imagery:
+    print(f"Raster layers: Included downloaded imagery")
+```
+
+### Complete Analysis Workflow
+```python
+# Complete analysis workflow with all features
+from planetscope_py import (
+    PlanetScopeQuery, SpatialDensityEngine, TemporalAnalyzer,
+    AssetManager, GeoPackageManager
+)
+
+async def complete_analysis_workflow():
+    # 1. Scene discovery with multiple ROI input options
+    query = PlanetScopeQuery()
+    
+    # Option A: Use shapefile directly
+    roi_shapefile = r'C:\GIS\study_areas\milan_area.shp'
+    results = query.search_scenes(
+        geometry=roi_shapefile,  # Direct shapefile support
+        start_date="2024-01-01",
+        end_date="2024-12-31",
+        cloud_cover_max=0.3
+    )
+    
+    # Option B: Use traditional geometry (alternative)
+    # results = query.search_scenes(
+    #     geometry=milan_geometry,
+    #     start_date="2024-01-01",
+    #     end_date="2024-12-31",
+    #     cloud_cover_max=0.3
+    # )
+    
+    # 2. Spatial analysis with file-based ROI
+    spatial_engine = SpatialDensityEngine()
+    spatial_result = spatial_engine.calculate_density(results['features'], roi_shapefile)
+    
+    # 3. Temporal analysis with file-based ROI (one-line function)
+    temporal_result = analyze_roi_temporal_patterns(
+        roi_shapefile,  # Same shapefile for consistency
+        "2024-01-01/2024-12-31",
+        spatial_resolution=100,
+        optimization_level="auto",  # Automatic FAST/ACCURATE selection
+        clip_to_roi=True,
+        create_visualizations=True,
+        export_geotiffs=True
+    )
+    
+    # 4. Asset management (with file-based ROI clipping)
+    asset_manager = AssetManager(query.auth)
+    quota_info = await asset_manager.get_quota_info()
+    
+    if quota_info.remaining_area_km2 > 100:  # Check available quota
+        downloads = await asset_manager.activate_and_download_assets(
+            scenes=results['features'][:20],  # Download subset
+            clip_to_roi=roi_shapefile  # ROI clipping with file support
+        )
+    else:
+        downloads = None
+        print("Insufficient quota for downloads")
+    
+    # 5. Export to GeoPackage with file-based ROI
+    geopackage_manager = GeoPackageManager()
+    geopackage_manager.create_scene_geopackage(
+        scenes=results['features'],
+        output_path="complete_analysis.gpkg",
+        roi=roi_shapefile,  # File-based ROI support
+        downloaded_files=downloads
+    )
+    
+    return {
+        'scenes': len(results['features']),
+        'spatial_analysis': spatial_result,
+        'temporal_analysis': temporal_result,
+        'downloads': len(downloads) if downloads else 0
+    }
+
+# Run complete workflow
+# results = await complete_analysis_workflow()
+```
+
+## Core Components
+
+### Authentication Management
+```python
+from planetscope_py import PlanetAuth
+
+# Automatic API key discovery
+auth = PlanetAuth()
+
+# Check authentication status
+if auth.is_authenticated:
+    print("Successfully authenticated with Planet API")
+    
+# Get session for API requests
+session = auth.get_session()
+```
+
+### Planet API Query System
+```python
+from planetscope_py import PlanetScopeQuery
+
+query = PlanetScopeQuery()
+
+# Advanced scene search with comprehensive filtering
+results = query.search_scenes(
+    geometry=geometry,
+    start_date="2025-01-01",
+    end_date="2025-01-31",
+    cloud_cover_max=0.2,
+    sun_elevation_min=30,
+    item_types=["PSScene"]
+)
+
+# Get scene statistics
+stats = query.get_scene_stats(geometry, "2025-01-01", "2025-01-31")
+
+# Batch search across multiple geometries
+batch_results = query.batch_search([geom1, geom2, geom3], "2025-01-01", "2025-01-31")
+```
+
+### Spatial Analysis Engine
+```python
+from planetscope_py import SpatialDensityEngine, DensityConfig, DensityMethod
+
+# Configure analysis with automatic method selection
+config = DensityConfig(
+    resolution=100.0,  # 100m grid cells
+    method=DensityMethod.AUTO,  # Auto-select optimal method
+    max_memory_gb=8.0,
+    parallel_workers=4
+)
+
+engine = SpatialDensityEngine(config)
+result = engine.calculate_density(scene_footprints=scenes, roi_geometry=roi)
+
+# Performance benchmarks (Milan dataset: 43 scenes, 355 km²)
+# - Rasterization: 0.03-0.09s for 100m-30m resolutions
+# - Vector Overlay: 53-203s with highest precision
+# - Adaptive Grid: 9-15s with memory efficiency
+```
+
+### Temporal Analysis Engine
+```python
+from planetscope_py import TemporalAnalyzer, TemporalConfig, TemporalMetric
+
+# Configure temporal analysis
+config = TemporalConfig(
+    spatial_resolution=100.0,
+    metrics=[
+        TemporalMetric.COVERAGE_DAYS,
+        TemporalMetric.MEAN_INTERVAL,
+        TemporalMetric.TEMPORAL_DENSITY
+    ],
+    optimization_method="auto"
+)
+
+analyzer = TemporalAnalyzer(config)
+result = analyzer.analyze_temporal_patterns(scenes, roi, start_date, end_date)
+
+# Export temporal results
+analyzer.export_temporal_geotiffs(result, "temporal_analysis", roi)
 ```
 
 ## Features
@@ -159,24 +422,24 @@ fig = visualizer.create_summary_plot(
 - **Preview Support**: Scene preview URL generation for visual inspection
 - **Real-World Testing**: Verified with actual Planet API calls and data retrieval
 
-### Enhanced Spatial Analysis Engine (v4.0+)
-- **Fixed Coordinate System Display**: Proper north-to-south orientation with corrected transforms
-- **Enhanced Multi-Algorithm Calculation**: Three computational methods with coordinate fixes
-- **Rasterization as Optimized Default**: Changed from vector overlay for better performance
-- **High-Resolution Analysis**: Support for 3m to 1000m grid resolutions with coordinate accuracy
-- **Enhanced Performance Optimization**: Automatic method selection with increased thresholds
-- **Memory Efficient Processing**: Adaptive grid and chunking with coordinate validation
-- **One-Line Functions**: Individual plot access and simplified workflows
-- **Enhanced Visualization**: Coordinate-corrected plots with increased scene limits (150+ default)
-- **Robust Export**: GeoTIFF export with coordinate fixes and QGIS styling
+### Spatial Analysis Engine (Complete)
+- **Multi-Algorithm Calculation**: Three computational methods (rasterization, vector overlay, adaptive grid)
+- **Automatic Method Selection**: Intelligent algorithm selection based on dataset characteristics
+- **High-Resolution Analysis**: Support for 3m to 1000m grid resolutions with sub-pixel accuracy
+- **Performance Optimization**: Memory-efficient processing with adaptive chunking
+- **Coordinate System Fixes**: Proper CRS handling and transformation accuracy
+- **Professional Visualization**: Four-panel summary plots with comprehensive statistics
+- **GeoTIFF Export**: GIS-compatible export with automatic QGIS styling
+- **Cross-Platform Compatibility**: Standardized grid structures and coordinate handling
 
-### Temporal Analysis (Complete)
-- **3D Spatiotemporal Data Cubes**: Multi-dimensional analysis with (lat, lon, time) dimensions
-- **Seasonal Pattern Detection**: Automated identification of acquisition patterns and seasonal trends
-- **Temporal Gap Analysis**: Detection and analysis of coverage gaps with severity assessment
-- **Time Series Analytics**: Comprehensive temporal statistics and trend analysis
-- **Temporal Resolution Support**: Configurable analysis from daily to annual scales
-- **Cross-Platform Grid Compatibility**: Standardized temporal data structures
+### Temporal Analysis (Complete - NEW in v4.0.0)
+- **Grid-Based Pattern Analysis**: Temporal analysis using same grid approach as spatial density
+- **Multiple Temporal Metrics**: Coverage days, interval statistics, temporal density, frequency
+- **Performance Optimization**: FAST (vectorized) and ACCURATE (cell-by-cell) methods
+- **Temporal Statistics**: Comprehensive statistical analysis and gap detection
+- **Professional Export**: GeoTIFF files with QML styling and metadata
+- **ROI Integration**: Full integration with coordinate system fixes
+- **Visualization**: Four-panel summary plots and comprehensive reporting
 
 ### Asset Management (Complete)
 - **Intelligent Quota Monitoring**: Real-time tracking of Planet subscription usage
@@ -194,27 +457,23 @@ fig = visualizer.create_summary_plot(
 - **Cross-Platform Standards**: Standardized schemas for maximum compatibility
 - **Imagery Integration**: Optional inclusion of downloaded scene imagery
 
-### Enhanced Visualization and Export (v4.0+)
-- **Coordinate-Corrected Visualization**: Fixed orientation and geographic alignment
-- **Enhanced GeoTIFF Export**: Coordinate fixes with automatic QGIS styling
-- **One-Line Plot Functions**: Individual visualization access with single commands
-- **Increased Scene Limits**: 150+ default (up to 1000+) in footprint plots
-- **Dynamic Histogram Bins**: Automatic bin calculation based on data range
-- **Multi-Panel Summary Plots**: Coordinate-corrected density visualization with statistics
-- **Enhanced Export Formats**: NumPy arrays, CSV, and GeoPackage with coordinate fixes
-- **Robust Error Handling**: PROJ/CRS compatibility with multiple fallbacks
+### Visualization and Export
+- **Professional Visualization**: Multi-panel summary plots with comprehensive statistics
+- **GeoTIFF Export**: GIS-compatible export with automatic QGIS styling
+- **Statistical Analysis**: Comprehensive statistics for all analysis types
+- **Multiple Export Formats**: NumPy arrays, CSV, and GeoPackage formats
+- **Cross-Platform Standards**: Standardized file formats and metadata schemas
 
 ## Installation
 
 ### Standard Installation
 ```bash
-# Development installation (recommended)
-git clone https://github.com/Black-Lights/planetscope-py.git
-cd planetscope-py
-pip install -e .
+pip install planetscope-py
+```
 
-# Install enhanced dependencies for full functionality
-pip install -r requirements.txt
+### Enhanced Installation (with all optional features)
+```bash
+pip install planetscope-py[all]
 ```
 
 ### Development Installation
@@ -223,15 +482,15 @@ pip install -r requirements.txt
 git clone https://github.com/Black-Lights/planetscope-py.git
 cd planetscope-py
 
-# Creating a virtual environment
+# Create virtual environment
 python -m venv planetscope_env
-.\planetscope_env\Scripts\Activate.ps1 # Windows
-pip install wheel setuptools
-python.exe -m pip install --upgrade pip
+source planetscope_env/bin/activate  # Linux/macOS
+# or
+planetscope_env\Scripts\activate     # Windows
 
-# Install enhanced dependencies for full functionality
+# Install development dependencies
+pip install -e .
 pip install -r requirements-dev.txt
-pip install -e . 
 ```
 
 ## Authentication
@@ -267,207 +526,6 @@ auth = PlanetAuth(api_key="your_planet_api_key_here")
 ### Obtaining Your API Key
 Get your Planet API key from [Planet Account Settings](https://www.planet.com/account/#/).
 
-## Enhanced Usage Examples
-
-### Basic Scene Search with Enhanced Features
-```python
-from planetscope_py import PlanetScopeQuery
-
-# Initialize query system (automatically detects API key)
-query = PlanetScopeQuery()
-
-# Define area of interest (example: Milan, Italy)
-milan_geometry = {
-    "type": "Point",
-    "coordinates": [9.1900, 45.4642]  # [longitude, latitude]
-}
-
-# Search for scenes
-results = query.search_scenes(
-    geometry=milan_geometry,
-    start_date="2025-01-01",
-    end_date="2025-01-31",
-    cloud_cover_max=0.2,  # 20% maximum cloud cover
-    item_types=["PSScene"]
-)
-
-# Check results
-print(f"Found {len(results['features'])} scenes")
-```
-
-### Enhanced One-Line Analysis Workflow
-```python
-from planetscope_py import quick_planet_analysis
-
-# Complete enhanced analysis in one line
-result = quick_planet_analysis(
-    milan_roi, "last_month",
-    resolution=30.0,                          # Optimized resolution
-    max_scenes_footprint=300,                 # Enhanced scene limits
-    show_plots=True                           # Display in notebook
-)
-
-# Verify enhanced features
-print(f"Enhanced Features Applied:")
-print(f"  Coordinate fixes: {result['summary'].get('coordinate_system_corrected', False)}")
-print(f"  Method used: {result['density_result'].method_used.value}")
-print(f"  Scene limits: {result['summary'].get('max_scenes_displayed', 0)}")
-print(f"  Analysis time: {result['summary']['computation_time_s']:.2f}s")
-```
-
-### Enhanced Individual Visualizations
-```python
-from planetscope_py import plot_density_map_only, plot_footprints_only, plot_histogram_only, export_geotiff_only
-
-# Enhanced density map with coordinate fixes
-fig = plot_density_map_only(
-    milan_roi, "last_month", 
-    save_path="density_corrected.png",
-    resolution=30.0,
-    clip_to_roi=True
-)
-
-# Enhanced footprint plot with increased limits
-fig = plot_footprints_only(
-    milan_roi, "last_month",
-    save_path="footprints_enhanced.png",
-    max_scenes=500                            # Enhanced: up to 1000+
-)
-
-# Enhanced histogram with dynamic bins
-fig = plot_histogram_only(
-    milan_roi, "last_month",
-    save_path="histogram_dynamic.png"
-)
-
-# Enhanced GeoTIFF export with coordinate fixes
-success = export_geotiff_only(
-    milan_roi, "last_month",
-    output_path="density_corrected.tif"
-)
-# Automatically creates: density_corrected.tif + density_corrected.qml
-```
-
-### Complete Enhanced Analysis Workflow
-```python
-# Complete analysis workflow with enhanced features
-from planetscope_py import (
-    PlanetScopeQuery, quick_planet_analysis, plot_density_map_only,
-    AssetManager, GeoPackageManager
-)
-
-async def enhanced_analysis_workflow():
-    # 1. Scene discovery (unchanged)
-    query = PlanetScopeQuery()
-    results = query.search_scenes(
-        geometry=milan_geometry,
-        start_date="2024-01-01",
-        end_date="2024-12-31",
-        cloud_cover_max=0.3
-    )
-    
-    # 2. Enhanced spatial analysis (one-line)
-    spatial_result = quick_planet_analysis(
-        milan_roi, "last_month",
-        resolution=30.0,                      # Optimized default
-        method="rasterization",               # Enhanced default
-        max_scenes_footprint=300,             # Enhanced limits
-        coordinate_system_fixes=True          # Enhanced accuracy
-    )
-    
-    # 3. Enhanced individual plots
-    plot_density_map_only(milan_roi, "last_month", "enhanced_density.png")
-    plot_footprints_only(milan_roi, "last_month", "enhanced_footprints.png", max_scenes=500)
-    export_geotiff_only(milan_roi, "last_month", "enhanced_density.tif")
-    
-    # 4. Asset management (unchanged)
-    asset_manager = AssetManager(query.auth)
-    quota_info = await asset_manager.get_quota_info()
-    
-    if quota_info.remaining_area_km2 > 100:
-        downloads = await asset_manager.activate_and_download_assets(
-            scenes=results['features'][:20],
-            clip_to_roi=milan_roi
-        )
-    else:
-        downloads = None
-        print("Insufficient quota for downloads")
-    
-    # 5. Export to GeoPackage (unchanged)
-    geopackage_manager = GeoPackageManager()
-    geopackage_manager.create_scene_geopackage(
-        scenes=results['features'],
-        output_path="enhanced_analysis.gpkg",
-        roi=milan_roi,
-        downloaded_files=downloads
-    )
-    
-    return {
-        'scenes': len(results['features']),
-        'enhanced_spatial_analysis': spatial_result,
-        'coordinate_fixes_applied': spatial_result['summary'].get('coordinate_system_corrected', False),
-        'downloads': len(downloads) if downloads else 0
-    }
-
-# Run enhanced workflow
-# results = await enhanced_analysis_workflow()
-```
-
-## Core Components
-
-### Enhanced Spatial Analysis Engine
-```python
-from planetscope_py import SpatialDensityEngine, DensityConfig, DensityMethod
-
-# Enhanced configuration with coordinate fixes
-config = DensityConfig(
-    resolution=30.0,                          # Optimized default (changed from 10m)
-    method=DensityMethod.RASTERIZATION,       # Enhanced default (changed from AUTO)
-    coordinate_system_fixes=True,             # Enable coordinate fixes (default)
-    chunk_size_km=200.0,                      # Increased chunk size (default)
-    max_memory_gb=16.0,                       # Increased memory limit (default)
-    parallel_workers=4,                       # Parallel processing
-    validate_geometries=True                  # Input validation
-)
-
-engine = SpatialDensityEngine(config)
-result = engine.calculate_density(scene_footprints=scenes, roi_geometry=roi)
-
-# Verify enhanced features
-print(f"Enhanced method used: {result.method_used.value}")
-print(f"Coordinate fixes applied: {result.coordinate_system_corrected}")
-print(f"Performance: {result.computation_time:.3f}s")
-```
-
-### Enhanced Visualization System
-```python
-from planetscope_py.visualization import DensityVisualizer
-
-# Enhanced visualizer with coordinate fixes
-visualizer = DensityVisualizer(figsize=(12, 8))
-
-# Enhanced summary plot with coordinate fixes
-fig = visualizer.create_summary_plot(
-    density_result=result,
-    roi_polygon=milan_roi,
-    max_scenes_footprint=300,                 # Enhanced limits
-    clip_to_roi=True,                         # Enhanced ROI clipping
-    show_plot=True                            # Display in notebook
-)
-
-# Enhanced individual plots
-visualizer.plot_density_map(result, milan_roi, title="Enhanced Density Map (Coordinate-Corrected)")
-visualizer.plot_scene_footprints(scene_polygons, milan_roi, max_scenes=500)
-
-# Enhanced export with coordinate fixes
-visualizer.export_density_geotiff_with_style(
-    result, "enhanced_output.tif",
-    roi_polygon=milan_roi,
-    clip_to_roi=True,
-    colormap="viridis"
-)
-```
-
 ## Testing
 
 ### Running Tests
@@ -479,56 +537,73 @@ python -m pytest tests/ -v
 python -m pytest tests/ --cov=planetscope_py --cov-report=html
 
 # Run specific component tests
-python -m pytest tests/test_density_engine.py -v
-python -m pytest tests/test_visualization.py -v
-python -m pytest tests/test_workflows.py -v
+python -m pytest tests/test_temporal_analysis.py -v
+python -m pytest tests/test_asset_manager.py -v
+python -m pytest tests/test_geopackage_manager.py -v
 ```
 
 ### Test Coverage
 Current test coverage: **349 tests passing (100%)**
 
-| Component | Tests | Status | Enhanced Features |
-|-----------|-------|--------|-------------------|
-| Authentication | 24 | All passing | - |
-| Configuration | 21 | All passing | - |
-| Exceptions | 48 | All passing | - |
-| Utilities | 54 | All passing | - |
-| Planet API Query | 45+ | All passing | - |
-| Metadata Processing | 30+ | All passing | - |
-| Rate Limiting | 25+ | All passing | - |
-| **Enhanced Spatial Analysis** | **35+** | **All passing** | **✓ Coordinate fixes, enhanced defaults** |
-| **Enhanced Visualization** | **30+** | **All passing** | **✓ One-line functions, coordinate fixes** |
-| **Enhanced Workflows** | **25+** | **All passing** | **✓ Simplified API, enhanced features** |
-| Temporal Analysis | 23 | All passing | - |
-| Asset Management | 23 | All passing | - |
-| GeoPackage Export | 21 | All passing | - |
+| Component | Tests | Status |
+|-----------|-------|--------|
+| Authentication | 24 | All passing |
+| Configuration | 21 | All passing |
+| Exceptions | 48 | All passing |
+| Utilities | 54 | All passing |
+| Planet API Query | 45+ | All passing |
+| Metadata Processing | 30+ | All passing |
+| Rate Limiting | 25+ | All passing |
+| Spatial Analysis | 35+ | All passing |
+| Temporal Analysis | 23 | All passing |
+| Asset Management | 23 | All passing |
+| GeoPackage Export | 21 | All passing |
 
 **Total: 349 tests with 100% success rate**
 
-## Enhanced Configuration Reference
+## Development Roadmap
 
-### Enhanced DensityConfig Defaults
-```python
-# Enhanced defaults in v4.0+
-DensityConfig(
-    resolution=30.0,                          # Changed from 10.0m (optimized)
-    method=DensityMethod.RASTERIZATION,       # Changed from AUTO (performance)
-    chunk_size_km=200.0,                      # Increased from 50.0km (efficiency)
-    max_memory_gb=16.0,                       # Increased from 8.0GB (capacity)
-    coordinate_system_fixes=True,             # New: Enable coordinate fixes
-    force_single_chunk=False,                 # New: Chunking control
-    validate_geometries=True                  # New: Input validation
-)
-```
+### Foundation (Complete)
+- Robust authentication system with hierarchical API key detection
+- Advanced configuration management with environment support
+- Comprehensive exception handling with detailed error context
+- Complete utility functions with geometry and date validation
+- Cross-platform compatibility testing and validation
 
-### Enhanced Method Selection
-```python
-# Enhanced automatic method selection (v4.0+)
-# - Favors rasterization over vector overlay for performance
-# - Increased scene thresholds (2000+ scenes for rasterization)
-# - Coordinate fixes enabled for all methods
-# - Enhanced memory management and error handling
-```
+### Planet API Integration (Complete)
+- Full Planet API integration with all major endpoints
+- Advanced scene search with sophisticated filtering
+- Comprehensive metadata processing and quality assessment
+- Intelligent rate limiting and error recovery
+- Real-world testing with actual Planet API data
+
+### Spatial Analysis (Complete)
+- Multi-algorithm spatial density calculations
+- Performance optimization with automatic method selection
+- High-resolution analysis capabilities (3m-1000m)
+- Professional visualization and export tools
+- Memory-efficient processing for large datasets
+
+### Temporal Analysis (Complete - v4.0.0)
+- Grid-based temporal pattern analysis
+- Multiple temporal metrics and statistics
+- Performance optimization with FAST/ACCURATE methods
+- Professional visualization and export capabilities
+- Integration with existing spatial analysis framework
+
+### Asset Management (Complete)
+- Intelligent quota monitoring and usage tracking
+- Automated asset activation and download management
+- Parallel downloads with progress tracking and retry logic
+- User confirmation workflows with impact assessment
+- ROI-based clipping and processing capabilities
+
+### Data Export (Complete)
+- Professional GeoPackage creation with comprehensive metadata
+- Multi-layer support with vector and raster integration
+- GIS software compatibility and styling
+- Flexible schema support for different use cases
+- Cross-platform file format standards
 
 ## Requirements
 
@@ -545,43 +620,35 @@ DensityConfig(
 - pandas: Data manipulation and analysis
 - python-dateutil: Date parsing and operations
 
-### Enhanced Dependencies (v4.0+)
-- **Enhanced Spatial Analysis**: rasterio, geopandas (for coordinate fixes and export)
-- **Enhanced Visualization**: matplotlib, contextily (for coordinate-corrected plotting)
-- **Temporal Analysis**: xarray, scipy (for data cubes and analysis)
-- **Asset Management**: aiohttp, asyncio (for async downloads)
+### Enhanced Dependencies (v4.0.0)
+- **Spatial Analysis**: rasterio, geopandas (for coordinate fixes and export)
+- **Temporal Analysis**: xarray, scipy (for data structures and statistical analysis)
+- **Asset Management**: aiohttp (for async downloads)
 - **GeoPackage Export**: geopandas, rasterio, fiona (for GIS data export)
+- **Visualization**: matplotlib (for plotting and visualization)
 - **Optional Interactive**: ipywidgets (for Jupyter notebook integration)
 
-## Enhanced API Reference
+## API Reference
 
-### One-Line Functions
-```python
-# Enhanced one-line analysis
-quick_planet_analysis(roi, period, **config)
+### Core Classes
+- `PlanetAuth`: Authentication management with multiple methods
+- `PlanetScopeQuery`: Scene discovery and metadata processing
+- `SpatialDensityEngine`: Multi-algorithm spatial analysis
+- `TemporalAnalyzer`: Grid-based temporal pattern analysis
+- `AssetManager`: Quota monitoring and download management
+- `GeoPackageManager`: Professional data export system
 
-# Enhanced one-line visualizations
-plot_density_map_only(roi, period, save_path, **kwargs)
-plot_footprints_only(roi, period, save_path, max_scenes=300, **kwargs)
-plot_histogram_only(roi, period, save_path, **kwargs)
-export_geotiff_only(roi, period, output_path, **kwargs)
-```
+### Configuration Classes
+- `DensityConfig`: Spatial analysis configuration
+- `TemporalConfig`: Temporal analysis configuration
+- `GeoPackageConfig`: Export configuration
+- `AssetConfig`: Asset management configuration
 
-### Enhanced Configuration
-```python
-# Enhanced density configuration
-DensityConfig(
-    coordinate_system_fixes=True,             # Enable coordinate fixes
-    max_scenes_footprint=150,                 # Enhanced scene display limits
-    method=DensityMethod.RASTERIZATION        # Enhanced default method
-)
-
-# Enhanced visualization configuration
-DensityVisualizer(
-    figsize=(12, 8),                          # Figure size
-    default_cmap="viridis"                    # Default colormap
-)
-```
+### Result Classes
+- `DensityResult`: Spatial analysis results with statistics
+- `TemporalResult`: Temporal analysis results with metrics
+- `AssetStatus`: Asset activation and download status
+- `QuotaInfo`: Real-time quota information
 
 ## Support
 
@@ -600,7 +667,7 @@ If you use this library in your research, please cite:
   year = {2025},
   version = {4.0.0},
   url = {https://github.com/Black-Lights/planetscope-py},
-  note = {Enhanced with coordinate system fixes, one-line functions, and improved performance}
+  note = {Complete temporal analysis and advanced data management capabilities}
 }
 ```
 
