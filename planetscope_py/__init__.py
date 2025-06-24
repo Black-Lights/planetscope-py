@@ -19,6 +19,15 @@ import logging
 import warnings
 from typing import Dict, Any, Optional, Union, List
 
+# Add these imports for type hints
+try:
+    from shapely.geometry import Polygon
+except ImportError:
+    # Fallback if shapely not available
+    Polygon = None
+
+from pathlib import Path
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -122,6 +131,22 @@ try:
 except ImportError:
     pass
 
+
+# Enhanced GeoPackage One-Liner Functions
+_GEOPACKAGE_ONELINERS_AVAILABLE = False
+try:
+    from .geopackage_oneliners import (
+        quick_geopackage_export, create_milan_geopackage, create_clipped_geopackage,
+        create_full_grid_geopackage, export_scenes_to_geopackage,
+        quick_scene_search_and_export, validate_geopackage_output,
+        batch_geopackage_export, get_geopackage_usage_examples
+    )
+    _GEOPACKAGE_ONELINERS_AVAILABLE = True
+except ImportError as e:
+    _GEOPACKAGE_ONELINERS_AVAILABLE = False
+    import warnings
+    warnings.warn(f"GeoPackage one-liners not available: {e}")
+
 # Preview Management
 _PREVIEW_MANAGEMENT_AVAILABLE = False
 try:
@@ -160,6 +185,162 @@ except ImportError:
 
 
 # ENHANCED HIGH-LEVEL API FUNCTIONS
+
+def create_scene_geopackage(
+    roi: Union["Polygon", list, dict],  # Use quotes for forward reference
+    time_period: str = "last_month",
+    output_path: Optional[str] = None,
+    clip_to_roi: bool = True,
+    **kwargs
+) -> str:
+    """
+    HIGH-LEVEL API: Create GeoPackage with scene footprints.
+    
+    ENHANCED one-line function for GeoPackage creation with Planet scene footprints.
+    
+    Args:
+        roi: Region of interest as Shapely Polygon, coordinate list, or GeoJSON dict
+        time_period: Time period specification:
+            - "last_month": Previous 30 days
+            - "last_3_months": Previous 90 days
+            - "YYYY-MM-DD/YYYY-MM-DD": Custom date range
+        output_path: Path for output GeoPackage (auto-generated if None)
+        clip_to_roi: Whether to clip scene footprints to ROI shape (default: True)
+        **kwargs: Additional parameters:
+            - cloud_cover_max (float): Maximum cloud cover threshold (default: 0.3)
+            - schema (str): Attribute schema ("minimal", "standard", "comprehensive")
+            - sun_elevation_min (float): Minimum sun elevation in degrees
+            - ground_control (bool): Require ground control points
+            - quality_category (str): Required quality category
+            - item_types (list): Planet item types to search
+    
+    Returns:
+        str: Path to created GeoPackage file
+    
+    Example:
+        >>> from planetscope_py import create_scene_geopackage
+        >>> from shapely.geometry import Polygon
+        >>> 
+        >>> milan_roi = Polygon([
+        ...     [8.7, 45.1], [9.8, 44.9], [10.3, 45.3], [10.1, 45.9],
+        ...     [9.5, 46.2], [8.9, 46.0], [8.5, 45.6], [8.7, 45.1]
+        ... ])
+        >>> 
+        >>> # One-liner to create clipped GeoPackage
+        >>> gpkg_path = create_scene_geopackage(milan_roi, "2025-01-01/2025-01-31")
+        >>> print(f"Created: {gpkg_path}")
+    """
+    if not _GEOPACKAGE_ONELINERS_AVAILABLE:
+        raise ImportError(
+            "GeoPackage one-liner functions not available. "
+            "Please create planetscope_py/geopackage_oneliners.py with the one-liner functions. "
+            "See the artifact code provided for the complete implementation."
+        )
+    
+    return quick_geopackage_export(
+        roi=roi,
+        time_period=time_period,
+        output_path=output_path,
+        clip_to_roi=clip_to_roi,
+        **kwargs
+    )
+
+
+def quick_milan_geopackage(
+    time_period: str = "2025-01-01/2025-01-31",
+    output_path: Optional[str] = None,
+    size: str = "large",
+    **kwargs
+) -> str:
+    """
+    HIGH-LEVEL API: Create Milan area GeoPackage with predefined polygon.
+    
+    Args:
+        time_period: Time period for scene search (default: Jan 2025)
+        output_path: Output path (auto-generated if None)
+        size: Milan area size preset:
+            - "city_center": ~100 km² (central Milan only)
+            - "small": ~500 km² (Milan + close suburbs)  
+            - "medium": ~1200 km² (Greater Milan area)
+            - "large": ~2000+ km² (Milan metropolitan region)
+        **kwargs: Additional parameters (cloud_cover_max, schema, etc.)
+    
+    Returns:
+        str: Path to created GeoPackage file
+    """
+    if not _GEOPACKAGE_ONELINERS_AVAILABLE:
+        raise ImportError(
+            "GeoPackage one-liner functions not available. "
+            "Please create planetscope_py/geopackage_oneliners.py with the one-liner functions."
+        )
+    
+    return create_milan_geopackage(
+        time_period=time_period,
+        output_path=output_path,
+        size=size,
+        **kwargs
+    )
+
+
+def search_and_export_scenes(
+    roi: Union["Polygon", list, dict],
+    start_date: str,
+    end_date: str,
+    output_path: Optional[str] = None,
+    **kwargs
+) -> Dict[str, Any]:
+    """
+    HIGH-LEVEL API: Search scenes and export to GeoPackage with detailed results.
+    
+    Args:
+        roi: Region of interest (Polygon, coordinate list, or GeoJSON dict)
+        start_date: Start date in "YYYY-MM-DD" format
+        end_date: End date in "YYYY-MM-DD" format
+        output_path: Path for output GeoPackage (auto-generated if None)
+        **kwargs: Additional search and export parameters
+    
+    Returns:
+        dict: Comprehensive results including scene count, statistics, file path
+    """
+    if not _GEOPACKAGE_ONELINERS_AVAILABLE:
+        raise ImportError(
+            "GeoPackage one-liner functions not available. "
+            "Please create planetscope_py/geopackage_oneliners.py with the one-liner functions."
+        )
+    
+    return quick_scene_search_and_export(
+        roi=roi,
+        start_date=start_date,
+        end_date=end_date,
+        output_path=output_path,
+        **kwargs
+    )
+
+
+def validate_scene_geopackage(geopackage_path: str) -> Dict[str, Any]:
+    """
+    HIGH-LEVEL API: Validate GeoPackage and get comprehensive statistics.
+    
+    Args:
+        geopackage_path: Path to GeoPackage file to validate
+    
+    Returns:
+        dict: Validation results and statistics
+    
+    Example:
+        >>> from planetscope_py import validate_scene_geopackage
+        >>> 
+        >>> stats = validate_scene_geopackage("milan_scenes.gpkg")
+        >>> if stats['valid']:
+        ...     print(f" Valid GeoPackage with {stats['feature_count']} scenes")
+    """
+    if not _GEOPACKAGE_ONELINERS_AVAILABLE:
+        raise ImportError(
+            "GeoPackage one-liner functions not available. "
+            "Please ensure geopackage_oneliners.py is created and all dependencies are installed."
+        )
+    
+    return validate_geopackage_output(geopackage_path)
 
 def analyze_roi_density(roi_polygon, time_period="2025-01-01/2025-01-31", **kwargs):
     """
@@ -488,6 +669,26 @@ if _GEOPACKAGE_AVAILABLE:
         "RasterInfo",
     ])
 
+# ADD these to your existing __all__ list:
+if _GEOPACKAGE_ONELINERS_AVAILABLE:
+    __all__.extend([
+        # HIGH-LEVEL GeoPackage API
+        "create_scene_geopackage",
+        "quick_milan_geopackage", 
+        "search_and_export_scenes",
+        "validate_scene_geopackage",
+        
+        # ONE-LINE FUNCTIONS (optional - for power users)
+        "quick_geopackage_export",
+        "create_milan_geopackage",
+        "create_clipped_geopackage", 
+        "create_full_grid_geopackage",
+        "export_scenes_to_geopackage",
+        "quick_scene_search_and_export",
+        "validate_geopackage_output",
+        "batch_geopackage_export",
+    ])
+
 if _PREVIEW_MANAGEMENT_AVAILABLE:
     __all__.extend([
         "PreviewManager",
@@ -541,6 +742,7 @@ def get_component_status():
             "temporal_analysis": _TEMPORAL_ANALYSIS_AVAILABLE,
             "asset_management": _ASSET_MANAGEMENT_AVAILABLE,
             "geopackage_export": _GEOPACKAGE_AVAILABLE,
+            "geopackage_oneliners": _GEOPACKAGE_ONELINERS_AVAILABLE,  # ADD THIS LINE
             "preview_management": _PREVIEW_MANAGEMENT_AVAILABLE,
             "interactive_features": _INTERACTIVE_AVAILABLE,
         },
@@ -578,6 +780,11 @@ def check_module_status():
         status_text = "Available" if available else "Not Available"
         print(f"  {component.replace('_', ' ').title()}: {status_text}")
     
+    # NEW: GeoPackage One-Liners Status
+    print("\nGeoPackage Features (NEW):")
+    print(f"  GeoPackage Manager: {'Available' if _GEOPACKAGE_AVAILABLE else 'Not Available'}")
+    print(f"  GeoPackage One-Liners: {'Available' if _GEOPACKAGE_ONELINERS_AVAILABLE else 'Not Available'}")
+    
     # Workflows
     print("\nWorkflow API (Enhanced):")
     workflows = status['workflows']
@@ -587,10 +794,12 @@ def check_module_status():
     
     # Summary
     total_components = (
-        len(spatial) + len(advanced) + len(workflows) + 2  # +2 for core components
+        len(spatial) + len(advanced) + len(workflows) + 4  # +4 for core + geopackage components
     )
     available_components = (
-        sum(spatial.values()) + sum(advanced.values()) + sum(workflows.values()) + 2
+        sum(spatial.values()) + sum(advanced.values()) + sum(workflows.values()) + 
+        int(status['core_infrastructure']) + int(status['planet_api_integration']) +
+        int(_GEOPACKAGE_AVAILABLE) + int(_GEOPACKAGE_ONELINERS_AVAILABLE)
     )
     
     print(f"\nSummary: {available_components}/{total_components} components available")
@@ -598,6 +807,9 @@ def check_module_status():
     if available_components < total_components:
         print("\nMissing components may require additional dependencies.")
         print("Refer to documentation for installation instructions.")
+
+
+
 
 
 def get_usage_examples():
@@ -627,18 +839,41 @@ def get_usage_examples():
     print("   ")
     print("   # Just get GeoTIFF + QML files")
     print("   success = export_geotiff_only(milan_roi, 'last_month', 'output.tif')")
-
     print("   # Just get histogram (proper dynamic bins)")
     print("   fig = plot_histogram_only(milan_roi, 'last_month', 'histogram.png')")
     
-    print("\n5. Enhanced Parameters:")
+    print("\n5. NEW: GeoPackage One-Liners (ENHANCED):")
+    if _GEOPACKAGE_ONELINERS_AVAILABLE:
+        print("   from planetscope_py import create_scene_geopackage, quick_milan_geopackage")
+        print("   ")
+        print("   # Create GeoPackage with scene footprints")
+        print("   gpkg = create_scene_geopackage(milan_roi, '2025-01-01/2025-01-31')")
+        print("   ")
+        print("   # Milan preset with different sizes")
+        print("   milan_gpkg = quick_milan_geopackage('last_month', size='large')")
+        print("   ")
+        print("   # Search + export with detailed results")
+        print("   result = search_and_export_scenes(roi, '2025-01-01', '2025-01-31')")
+        print("   print(f'Found {result[\"scenes_found\"]} scenes')")
+        print("   ")
+        print("   # Validate GeoPackage")
+        print("   stats = validate_scene_geopackage('output.gpkg')")
+        print("   print(f'Valid: {stats[\"valid\"]}, Features: {stats[\"feature_count\"]}')")
+    else:
+        print("   # GeoPackage one-liners not available")
+    
+    print("\n6. Enhanced Parameters:")
     print("   # Increased scene footprint limits")
     print("   result = quick_planet_analysis(roi, 'last_month', max_scenes_footprint=300)")
     print("   ")
     print("   # Custom resolution with coordinate fixes")
     print("   result = analyze_roi_density(roi, period, resolution=10)")
+    print("   ")
+    print("   # GeoPackage with clipping")
+    if _GEOPACKAGE_ONELINERS_AVAILABLE:
+        print("   gpkg = create_scene_geopackage(roi, period, clip_to_roi=True)")
     
-    print("\n6. Configuration Presets (if available):")
+    print("\n7. Configuration Presets (if available):")
     if _CONFIG_PRESETS_AVAILABLE:
         print("   from planetscope_py import PresetConfigs")
         print("   config = PresetConfigs.ULTRA_HIGH_DETAIL()")
@@ -652,6 +887,10 @@ def get_usage_examples():
     print("✓ One-line functions for individual outputs")
     print("✓ Robust PROJ error handling")
     print("✓ Enhanced ROI polygon clipping")
+    if _GEOPACKAGE_ONELINERS_AVAILABLE:
+        print("✓ NEW: GeoPackage one-liner functions")
+        print("✓ NEW: Milan area presets with different sizes")
+        print("✓ NEW: Scene search + export with comprehensive stats")
 
 
 # Enhanced help function
@@ -661,7 +900,7 @@ def help():
     print("=" * 30)
     print()
     print("This library provides professional tools for PlanetScope satellite imagery analysis")
-    print("with enhanced coordinate system fixes and simplified one-line functions.")
+    print("with enhanced coordinate system fixes, simplified one-line functions, and GeoPackage export.")
     print()
     
     check_module_status()
@@ -677,3 +916,104 @@ def help():
     print("• Limited scene footprint display (50 → 150+)")
     print("• Complex multi-step workflows") 
     print("• PROJ database compatibility issues")
+    if _GEOPACKAGE_ONELINERS_AVAILABLE:
+        print("• Complex GeoPackage creation workflows")
+        print("• Manual scene clipping and attribute management")
+
+def demo_milan_comparison():
+    """Show comparison between your original code and one-liner equivalent."""
+    print(" Milan GeoPackage Demo: Before vs After")
+    print("=" * 50)
+    
+    print("\nYOUR ORIGINAL CODE:")
+    print("─" * 20)
+    print("""
+from datetime import datetime
+from shapely.geometry import Polygon
+from planetscope_py import PlanetScopeQuery, GeoPackageManager, GeoPackageConfig
+
+# Create large irregular polygon around Milan (~2000+ km²)
+milan_polygon = Polygon([
+    [8.7, 45.1], [9.8, 44.9], [10.3, 45.3], [10.1, 45.9],
+    [9.5, 46.2], [8.9, 46.0], [8.5, 45.6], [8.7, 45.1]
+])
+
+# Search scenes
+query = PlanetScopeQuery()
+results = query.search_scenes(
+    geometry=milan_polygon,
+    start_date="2025-01-05",
+    end_date="2025-01-25", 
+    cloud_cover_max=1.0,
+    item_types=["PSScene"]
+)
+
+scenes = results.get('features', [])
+
+# Create clipped GeoPackage
+if scenes:
+    config = GeoPackageConfig(
+        clip_to_roi=True,
+        attribute_schema="standard"
+    )
+    
+    manager = GeoPackageManager(config=config)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_path = f"milan_large_{timestamp}.gpkg"
+    
+    manager.create_scene_geopackage(
+        scenes=scenes,
+        output_path=output_path,
+        roi=milan_polygon
+    )
+    """)
+    
+    print("\nNEW ONE-LINER EQUIVALENTS:")
+    print("─" * 27)
+    print("""
+# Option 1: Direct one-liner (your exact polygon)
+from planetscope_py import create_scene_geopackage
+from shapely.geometry import Polygon
+
+milan_polygon = Polygon([
+    [8.7, 45.1], [9.8, 44.9], [10.3, 45.3], [10.1, 45.9],
+    [9.5, 46.2], [8.9, 46.0], [8.5, 45.6], [8.7, 45.1]
+])
+
+gpkg_path = create_scene_geopackage(
+    milan_polygon, "2025-01-05/2025-01-25", 
+    clip_to_roi=True, cloud_cover_max=1.0
+)
+
+# Option 2: Even simpler with Milan preset
+from planetscope_py import quick_milan_geopackage
+
+milan_gpkg = quick_milan_geopackage(
+    "2025-01-05/2025-01-25", size="large", cloud_cover_max=1.0
+)
+
+# Option 3: With detailed results
+from planetscope_py import search_and_export_scenes
+
+result = search_and_export_scenes(
+    milan_polygon, "2025-01-05", "2025-01-25",
+    clip_to_roi=True, cloud_cover_max=1.0
+)
+
+print(f" Found {result['scenes_found']} scenes")
+print(f" Coverage: {result['coverage_ratio']:.1%}")
+print(f" GeoPackage: {result['geopackage_path']}")
+    """)
+    
+    print("\nBENEFITS OF ONE-LINERS:")
+    print(" 20+ lines → 3 lines")
+    print(" No manual timestamp handling")
+    print(" No config object creation")
+    print(" Built-in validation and error handling")
+    print(" Automatic statistics and reporting")
+    print(" Preset polygons for common areas")
+    print(" Batch processing capabilities")
+
+
+if __name__ == "__main__":
+    demo_milan_comparison()

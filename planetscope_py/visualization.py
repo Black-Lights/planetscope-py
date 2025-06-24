@@ -641,19 +641,26 @@ class DensityVisualizer:
         im1 = ax1.imshow(
             plot_array,  # Use corrected array
             extent=extent,
-            cmap="viridis",
+            cmap="turbo",  # Changed to turbo
             origin="lower",  # Correct origin for geographic data
             interpolation="nearest",
         )
-        
+
         title1 = "Density Map"
         if clip_to_roi and roi_polygon is not None:
             title1 += " (ROI Clipped)"
-            # Add ROI boundary
+            # Add ROI boundary - THIS IS THE FIX
             x, y = roi_polygon.exterior.xy
             ax1.plot(x, y, 'r-', linewidth=2, alpha=0.8, label='ROI Boundary')
             ax1.legend()
-        
+        # ADD THIS ELIF BLOCK - this was missing in your summary plot:
+        elif roi_polygon is not None:
+            # Even if not clipping, show ROI boundary for reference
+            title1 += " (Full Grid)"
+            x, y = roi_polygon.exterior.xy
+            ax1.plot(x, y, 'r-', linewidth=2, alpha=0.8, label='ROI Boundary')
+            ax1.legend()
+
         ax1.set_title(title1)
         ax1.set_xlabel("Longitude")
         ax1.set_ylabel("Latitude")

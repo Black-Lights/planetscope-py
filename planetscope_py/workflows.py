@@ -248,13 +248,17 @@ def analyze_density(
         
         # Calculate density using the engine's standard method
         density_result = engine.calculate_density(
-            scene_footprints=scenes_result['features'],
-            roi_geometry=roi_poly
-        )
+        scene_footprints=scenes_result['features'],
+        roi_geometry=roi_poly,
+        clip_to_roi=clip_to_roi  # Pass the clip_to_roi parameter
+    )
         
         results['density_result'] = density_result
         logger.info(f"Density calculated: {density_result.stats['mean']:.1f} avg scenes/pixel")
-        
+        analysis_type = "ROI-clipped" if clip_to_roi else "full grid"
+        logger.info(f"Density calculated ({analysis_type}): {density_result.stats['mean']:.1f} avg scenes/pixel")
+
+            
         # 5. Create Enhanced Visualizations with FIXES
         if create_visualizations:
             logger.info("Generating enhanced visualizations with coordinate fixes")
@@ -337,6 +341,7 @@ def analyze_density(
         # 8. Create Analysis Summary
         results['summary'] = {
             'roi_area_km2': calculate_area_km2(roi_poly),
+            'analysis_mode': 'ROI-clipped' if clip_to_roi else 'full grid',
             'scenes_found': scenes_found,
             'analysis_resolution_m': resolution,
             'computation_time_s': density_result.computation_time,
@@ -657,3 +662,55 @@ def temporal_analysis_workflow(
     
     logger.info("Temporal analysis workflow completed")
     return temporal_results
+
+def quick_planet_analysis(
+    roi: Union[Dict, Polygon, List[Tuple[float, float]]],
+    period: str = "last_month",
+    output_dir: str = "./analysis_output",
+    resolution: float = 30.0,
+    cloud_cover_max: float = 0.3,
+    method: str = "auto",
+    max_scenes_footprint: int = 150,
+    clip_to_roi: bool = True,  # NEW PARAMETER: Control clipping behavior
+    create_visualizations: bool = True,
+    export_geotiff: bool = True,
+    show_plots: bool = False,
+    **kwargs
+) -> Dict[str, Any]:
+    """
+    Enhanced one-line Planet analysis with TURBO colormap and full grid support.
+
+    This function performs complete PlanetScope scene analysis including search,
+    spatial density calculation, and visualization generation with coordinate fixes.
+
+    Args:
+        roi: Region of interest (GeoJSON dict, Shapely Polygon, or coordinate list)
+        period: Time period ("last_month", "last_3_months", or "YYYY-MM-DD/YYYY-MM-DD")
+        output_dir: Output directory for results
+        resolution: Spatial resolution in meters (default: 30m)
+        cloud_cover_max: Maximum cloud coverage (0.0-1.0)
+        method: Density calculation method ("auto", "rasterization", "vector_overlay", "adaptive_grid")
+        max_scenes_footprint: Maximum scenes to display in footprint plots
+        clip_to_roi: If True, clip analysis to ROI shape. If False, analyze full grid covering all scenes
+        create_visualizations: Whether to generate plots
+        export_geotiff: Whether to export GeoTIFF
+        show_plots: Whether to display plots
+        **kwargs: Additional parameters
+
+    Returns:
+        Dictionary containing all analysis results
+    """
+    # Just call the existing analyze_density function with all parameters
+    return analyze_density(
+        roi_polygon=roi,
+        time_period=period,
+        output_dir=output_dir,
+        resolution=resolution,
+        cloud_cover_max=cloud_cover_max,
+        max_scenes_footprint=max_scenes_footprint,
+        clip_to_roi=clip_to_roi,  # Pass the clip_to_roi parameter
+        create_visualizations=create_visualizations,
+        export_geotiff=export_geotiff,
+        show_plots=show_plots,
+        **kwargs
+    )

@@ -170,30 +170,25 @@ class EnhancedSpatialDensityEngine:
             logger.warning(f"Coarse resolution ({self.config.resolution}m) may lack detail")
 
     def calculate_density(
-        self, scene_footprints: List[Dict], roi_geometry: Union[Dict, Polygon], **kwargs
+        self, scene_footprints: List[Dict], roi_geometry: Union[Dict, Polygon], 
+        clip_to_roi: bool = True, **kwargs
     ) -> DensityResult:
         """
         Calculate spatial density with enhanced coordinate system handling.
 
-        This method includes all coordinate system fixes and produces
-        geographically correct results without mirroring or flipping issues.
-
         Args:
             scene_footprints: List of scene features with geometry
-            roi_geometry: Region of interest geometry
+            roi_geometry: Region of interest geometry  
+            clip_to_roi: If True, clip output to ROI shape. If False, create full grid covering all scenes.
             **kwargs: Additional parameters (resolution, method override, etc.)
 
         Returns:
             DensityResult with corrected coordinate system and proper alignment
-
-        Raises:
-            ValidationError: If inputs are invalid
-            PlanetScopeError: If calculation fails
         """
         start_time = time.time()
 
         try:
-            logger.info("Starting enhanced density calculation with coordinate fixes")
+            logger.info(f"Starting enhanced density calculation with coordinate fixes (clip_to_roi={clip_to_roi})")
             
             # Validate inputs
             roi_poly = self._prepare_roi_geometry(roi_geometry)
@@ -202,11 +197,14 @@ class EnhancedSpatialDensityEngine:
             # Update config with kwargs
             config = self._merge_config_kwargs(kwargs)
             
+            # Pass clip_to_roi to the density calculation method
+            kwargs['clip_to_roi'] = clip_to_roi
+            
             # Force single chunk if requested to avoid merging issues
             if config.force_single_chunk or config.chunk_size_km >= 200.0:
                 logger.info("Using single chunk processing to ensure coordinate consistency")
                 return self._process_single_density(
-                    scene_polygons, roi_poly, config, start_time
+                    scene_polygons, roi_poly, config, start_time, clip_to_roi=clip_to_roi
                 )
 
             # Check if ROI needs chunking
@@ -216,12 +214,12 @@ class EnhancedSpatialDensityEngine:
                 logger.info(f"Large ROI detected: processing in {len(chunks)} chunks")
                 logger.warning("Multi-chunk processing may have coordinate inconsistencies")
                 return self._process_chunked_density(
-                    scene_polygons, chunks, config, start_time
+                    scene_polygons, chunks, config, start_time, clip_to_roi=clip_to_roi
                 )
             else:
                 # Single chunk processing (preferred)
                 return self._process_single_density(
-                    scene_polygons, roi_poly, config, start_time
+                    scene_polygons, roi_poly, config, start_time, clip_to_roi=clip_to_roi
                 )
 
         except Exception as e:
@@ -390,6 +388,7 @@ class EnhancedSpatialDensityEngine:
         roi_poly: Polygon,
         config: DensityConfig,
         start_time: float,
+        clip_to_roi: bool = True,
     ) -> DensityResult:
         """Process density calculation for single ROI with coordinate fixes."""
 
@@ -404,15 +403,15 @@ class EnhancedSpatialDensityEngine:
         # Execute calculation with coordinate fixes
         if method == DensityMethod.RASTERIZATION:
             return self._calculate_enhanced_rasterization_density(
-                scene_polygons, roi_poly, config, start_time
+                scene_polygons, roi_poly, config, start_time, clip_to_roi=clip_to_roi
             )
         elif method == DensityMethod.VECTOR_OVERLAY:
             return self._calculate_vector_overlay_density(
-                scene_polygons, roi_poly, config, start_time
+                scene_polygons, roi_poly, config, start_time, clip_to_roi=clip_to_roi
             )
         elif method == DensityMethod.ADAPTIVE_GRID:
             return self._calculate_adaptive_grid_density(
-                scene_polygons, roi_poly, config, start_time
+                scene_polygons, roi_poly, config, start_time, clip_to_roi=clip_to_roi
             )
         else:
             raise ValidationError(f"Unsupported method: {method}")
@@ -454,17 +453,48 @@ class EnhancedSpatialDensityEngine:
         roi_poly: Polygon,
         config: DensityConfig,
         start_time: float,
+        clip_to_roi: bool = True,  # Add this parameter
     ) -> DensityResult:
         """
         Calculate density using enhanced rasterization with coordinate system fixes.
         
         This is the core method that implements all coordinate system corrections
         to eliminate mirroring, flipping, and alignment issues.
+        
+        Args:
+            clip_to_roi: If True, use ROI bounds and mask. If False, use all scene bounds.
         """
         logger.info("Executing enhanced rasterization with coordinate system fixes")
 
-        bounds = roi_poly.bounds
-        logger.info(f"ROI bounds: {bounds}")
+        if clip_to_roi:
+            # Original behavior - use ROI bounds and apply mask
+            bounds = roi_poly.bounds
+            logger.info(f"ROI bounds: {bounds}")
+            apply_roi_mask = True
+        else:
+            # NEW: Use bounds covering all scene footprints for full grid analysis
+            scene_bounds_list = [scene.bounds for scene in scene_polygons if scene.intersects(roi_poly)]
+            if not scene_bounds_list:
+                # Fallback to ROI if no intersecting scenes
+                bounds = roi_poly.bounds
+                apply_roi_mask = True
+            else:
+                # Create bounds covering all intersecting scene footprints
+                all_minx = min(b[0] for b in scene_bounds_list)
+                all_miny = min(b[1] for b in scene_bounds_list)
+                all_maxx = max(b[2] for b in scene_bounds_list)
+                all_maxy = max(b[3] for b in scene_bounds_list)
+                
+                # Expand bounds to include ROI as well
+                roi_bounds = roi_poly.bounds
+                bounds = (
+                    min(all_minx, roi_bounds[0]),
+                    min(all_miny, roi_bounds[1]), 
+                    max(all_maxx, roi_bounds[2]),
+                    max(all_maxy, roi_bounds[3])
+                )
+                apply_roi_mask = False
+                logger.info(f"Full grid bounds (all scenes + ROI): {bounds}")
 
         # Calculate raster dimensions
         resolution_deg = config.resolution / 111000  # Convert meters to degrees
@@ -509,8 +539,13 @@ class EnhancedSpatialDensityEngine:
         
         for i, scene_poly in enumerate(scene_polygons):
             try:
-                # Check intersection with ROI (optimization)
-                if not scene_poly.intersects(roi_poly):
+                # For full grid analysis, include all scenes that intersect ROI
+                # For clipped analysis, check intersection with ROI as optimization
+                if clip_to_roi and not scene_poly.intersects(roi_poly):
+                    scenes_skipped += 1
+                    continue
+                elif not clip_to_roi and not scene_poly.intersects(roi_poly):
+                    # For full grid, still only process scenes that intersect ROI
                     scenes_skipped += 1
                     continue
 
@@ -530,7 +565,7 @@ class EnhancedSpatialDensityEngine:
                 # Progress logging
                 if (i + 1) % 100 == 0:
                     logger.info(f"Processed {i + 1}/{len(scene_polygons)} scenes "
-                               f"({scenes_processed} rasterized, {scenes_skipped} skipped)")
+                            f"({scenes_processed} rasterized, {scenes_skipped} skipped)")
 
             except Exception as e:
                 logger.warning(f"Failed to rasterize scene {i}: {e}")
@@ -539,23 +574,31 @@ class EnhancedSpatialDensityEngine:
 
         logger.info(f"Rasterization complete: {scenes_processed} scenes processed, {scenes_skipped} skipped")
 
-        # Apply ROI mask with same corrected transform
-        roi_mask = rasterize(
-            [(roi_poly, 1)],
-            out_shape=(height, width),
-            transform=transform,
-            fill=0,
-            dtype=np.uint8,
-        )
+        # Apply ROI mask ONLY if clip_to_roi is True
+        if apply_roi_mask:
+            roi_mask = rasterize(
+                [(roi_poly, 1)],
+                out_shape=(height, width),
+                transform=transform,
+                fill=0,
+                dtype=np.uint8,
+            )
 
-        # Apply mask - keep density values inside ROI, set no_data outside
-        density_array = np.where(roi_mask == 1, density_array, config.no_data_value)
-
-        # Log ROI masking results
-        valid_pixels = np.sum(roi_mask == 1)
-        total_pixels = roi_mask.size
-        logger.info(f"ROI masking: {valid_pixels:,}/{total_pixels:,} valid pixels "
-                   f"({100*valid_pixels/total_pixels:.1f}%)")
+            # Apply mask - keep density values inside ROI, set no_data outside
+            density_array = np.where(roi_mask == 1, density_array, config.no_data_value)
+            
+            # Log ROI masking results
+            valid_pixels = np.sum(roi_mask == 1)
+            total_pixels = roi_mask.size
+            logger.info(f"ROI masking applied: {valid_pixels:,}/{total_pixels:,} valid pixels "
+                    f"({100*valid_pixels/total_pixels:.1f}%)")
+        else:
+            # For full grid analysis, set no_data only for areas with no coverage
+            # All areas within the computed bounds are valid
+            valid_pixels = np.sum(density_array >= 0)  # Count non-negative values
+            total_pixels = density_array.size
+            logger.info(f"Full grid analysis: {valid_pixels:,}/{total_pixels:,} pixels covered "
+                    f"({100*valid_pixels/total_pixels:.1f}%)")
 
         # Calculate comprehensive statistics
         stats = self._calculate_enhanced_density_stats(density_array, config.no_data_value)
@@ -578,12 +621,14 @@ class EnhancedSpatialDensityEngine:
                 "total_cells": width * height,
                 "valid_cells": valid_pixels,
                 "coverage_percent": 100 * valid_pixels / total_pixels,
+                "roi_clipped": apply_roi_mask,
             },
             coordinate_system_corrected=config.coordinate_system_fixes,
             no_data_value=config.no_data_value,
         )
 
-        logger.info(f"Enhanced rasterization completed in {computation_time:.2f}s")
+        analysis_type = "ROI-clipped" if apply_roi_mask else "full grid"
+        logger.info(f"Enhanced rasterization ({analysis_type}) completed in {computation_time:.2f}s")
         logger.info(f"Mean density: {stats['mean']:.2f} scenes/pixel")
         
         return result
