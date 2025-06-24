@@ -1,0 +1,54 @@
+Generated: 2025-06-23 04:26:30
+Working Directory: C:\Polimi\GI_Project\planetscope-py
+Git Repository: planetscope-py
+
+Project File Structure
+==================================================
+
+├── Examples/
+│   ├── Simple_Milan_Search_Example.ipynb
+│   ├── milan_scenes_jan2025.json
+│   └── milan_search.ipynb
+├── planetscope_py/
+│   ├── __init__.py
+│   ├── _version.py
+│   ├── adaptive_grid.py
+│   ├── asset_manager.py
+│   ├── auth.py
+│   ├── config.py
+│   ├── density_engine.py
+│   ├── exceptions.py
+│   ├── geopackage_manager.py
+│   ├── metadata.py
+│   ├── optimizer.py
+│   ├── query.py
+│   ├── rate_limiter.py
+│   ├── temporal_analysis.py
+│   ├── utils.py
+│   └── visualization.py
+├── tests/
+│   ├── __init__.py
+│   ├── conftest.py
+│   ├── mock_planet_api.py
+│   ├── test_asset_manager.py
+│   ├── test_auth.py
+│   ├── test_config.py
+│   ├── test_exceptions.py
+│   ├── test_geopackage_manager.py
+│   ├── test_metadata.py
+│   ├── test_query.py
+│   ├── test_rate_limiter.py
+│   ├── test_suite.py
+│   ├── test_temporal_analysis.py
+│   └── test_utils.py
+├── .gitignore
+├── CHANGELOG.md
+├── LICENSE
+├── README.md
+├── project-structure.txt
+├── pytest.ini
+├── requirements-dev.txt
+├── requirements.txt
+└── setup.py
+
+Total files: 42

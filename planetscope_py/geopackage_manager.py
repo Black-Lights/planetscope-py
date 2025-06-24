@@ -48,7 +48,7 @@ class GeoPackageConfig:
     compression: str = "LZW"
     overview_levels: List[int] = None
     target_crs: str = "EPSG:4326"
-    attribute_schema: str = "comprehensive"  # minimal, standard, comprehensive
+    attribute_schema: str = "standard"  # CHANGED: Default to enhanced standard schema
     max_raster_size_mb: int = 100  # Maximum raster size per layer
 
     def __post_init__(self):
@@ -201,79 +201,171 @@ class GeoPackageManager:
                 output_file.unlink()
             raise PlanetScopeError(f"GeoPackage creation failed: {e}")
 
-    def _process_scenes_for_geopackage(
-        self, scenes: List[Dict], roi: Optional[Polygon] = None
-    ) -> List[Dict]:
-        """Process scenes and extract data for GeoPackage creation."""
+    def _process_scenes_for_geopackage(self, scenes: List[Dict], roi: Optional[Polygon] = None) -> List[Dict]:
+        """
+        FIXED: Process scenes with proper clipping, Planet API metadata, AND centroid calculation.
+        """
         processed_scenes = []
-
-        for scene in scenes:
+        
+        logger.info(f"Processing {len(scenes)} scenes with clipping={self.config.clip_to_roi}...")
+        
+        for i, scene in enumerate(scenes):
             try:
-                # Extract scene geometry
-                scene_geom = shape(scene["geometry"])
-
-                # Validate and fix geometry if needed
-                if not scene_geom.is_valid:
-                    scene_geom = scene_geom.buffer(0)
-                    logger.warning(
-                        f"Fixed invalid geometry for scene {scene.get('id', 'unknown')}"
-                    )
-
-                # Clip to ROI if requested
-                if self.config.clip_to_roi and roi:
-                    if scene_geom.intersects(roi):
-                        clipped_geom = scene_geom.intersection(roi)
-                        if clipped_geom.is_empty or clipped_geom.area == 0:
-                            continue  # Skip scenes with no intersection
-                        scene_geom = clipped_geom
-                    else:
-                        continue  # Skip non-intersecting scenes
-                elif roi:
-                    # Filter to ROI but don't clip
-                    if not scene_geom.intersects(roi):
-                        continue
-
-                # Extract comprehensive metadata
+                # Extract metadata using the metadata processor
                 metadata = self.metadata_processor.extract_scene_metadata(scene)
-
-                # Calculate additional spatial metrics
-                area_km2 = calculate_area_km2(scene_geom)
-                centroid = scene_geom.centroid
-
-                # Prepare scene data
-                scene_data = {
-                    "geometry": scene_geom,
-                    "area_km2": area_km2,
-                    "centroid_lat": centroid.y,
-                    "centroid_lon": centroid.x,
-                    **metadata,  # Include all metadata fields
+                
+                # Get scene geometry
+                scene_geom = shape(scene.get("geometry", {}))
+                original_area = calculate_area_km2(scene_geom)
+                
+                # CRITICAL FIX: Actually clip geometry if clip_to_roi=True
+                if self.config.clip_to_roi and roi:
+                    try:
+                        intersection = scene_geom.intersection(roi)
+                        
+                        if intersection.is_empty:
+                            continue  # Skip scenes that don't overlap ROI
+                        
+                        # Use CLIPPED geometry as final geometry
+                        if intersection.geom_type in ['Polygon', 'MultiPolygon']:
+                            final_geometry = intersection
+                            clipped_area = calculate_area_km2(intersection)
+                            coverage_percentage = (clipped_area / original_area) * 100 if original_area > 0 else 0
+                            aoi_km2 = clipped_area
+                        else:
+                            continue  # Skip if intersection is just a line/point
+                            
+                    except Exception as e:
+                        logger.warning(f"Clipping error for scene {metadata.get('scene_id', 'unknown')}: {e}")
+                        continue
+                else:
+                    # No clipping - use original geometry
+                    final_geometry = scene_geom
+                    
+                    # Calculate AOI for non-clipped case
+                    aoi_km2 = 0.0
+                    coverage_percentage = 0.0
+                    
+                    if roi and scene_geom.is_valid:
+                        try:
+                            intersection = scene_geom.intersection(roi)
+                            if not intersection.is_empty:
+                                aoi_km2 = calculate_area_km2(intersection)
+                                coverage_percentage = (aoi_km2 / original_area) * 100 if original_area > 0 else 0
+                        except Exception as e:
+                            logger.warning(f"AOI calculation error: {e}")
+                
+                # CENTROID FIX: Calculate centroid from final geometry
+                try:
+                    centroid = final_geometry.centroid
+                    centroid_lat = centroid.y
+                    centroid_lon = centroid.x
+                except Exception as e:
+                    logger.warning(f"Centroid calculation error for scene {i}: {e}")
+                    centroid_lat = None
+                    centroid_lon = None
+                
+                # Extract Planet API properties directly
+                properties = scene.get("properties", {})
+                
+                # Complete Planet API field mapping
+                planet_api_fields = {
+                    # Core identification
+                    "id": properties.get("id"),
+                    "item_type": properties.get("item_type"),
+                    "satellite_id": properties.get("satellite_id"),
+                    "provider": properties.get("provider"),
+                    "platform": properties.get("platform"),
+                    "spacecraft_id": properties.get("spacecraft_id"),
+                    
+                    # Temporal information
+                    "acquired": properties.get("acquired"),
+                    "published": properties.get("published"),
+                    "updated": properties.get("updated"),
+                    "publishing_stage": properties.get("publishing_stage"),
+                    
+                    # Quality and coverage metrics (ALL from your Planet API example)
+                    "cloud_cover": properties.get("cloud_cover"),
+                    "cloud_percent": properties.get("cloud_percent"),
+                    "clear_percent": properties.get("clear_percent"),
+                    "clear_confidence_percent": properties.get("clear_confidence_percent"),
+                    "visible_percent": properties.get("visible_percent"),
+                    "visible_confidence_percent": properties.get("visible_confidence_percent"),
+                    "shadow_percent": properties.get("shadow_percent"),
+                    "snow_ice_percent": properties.get("snow_ice_percent"),
+                    "heavy_haze_percent": properties.get("heavy_haze_percent"),
+                    "light_haze_percent": properties.get("light_haze_percent"),
+                    "anomalous_pixels": properties.get("anomalous_pixels"),
+                    "usable_data": properties.get("usable_data"),
+                    "quality_category": properties.get("quality_category"),
+                    "black_fill": properties.get("black_fill"),
+                    
+                    # Technical specifications
+                    "gsd": properties.get("gsd"),
+                    "epsg_code": properties.get("epsg_code"),
+                    "pixel_resolution": properties.get("pixel_resolution"),
+                    "processing_level": properties.get("processing_level"),
+                    "ground_control": properties.get("ground_control"),
+                    
+                    # Solar and viewing geometry
+                    "sun_azimuth": properties.get("sun_azimuth"),
+                    "sun_elevation": properties.get("sun_elevation"),
+                    "satellite_azimuth": properties.get("satellite_azimuth"),
+                    "view_angle": properties.get("view_angle"),
+                    "off_nadir": properties.get("off_nadir"),
+                    "azimuth_angle": properties.get("azimuth_angle"),
+                    
+                    # Technical details
+                    "instrument": properties.get("instrument"),
+                    "strip_id": properties.get("strip_id"),
+                    "radiometric_target": properties.get("radiometric_target"),
                 }
-
-                processed_scenes.append(scene_data)
-
+                
+                # Merge Planet API fields into metadata
+                for field_name, field_value in planet_api_fields.items():
+                    if field_value is not None:
+                        if field_name not in metadata or metadata[field_name] is None:
+                            metadata[field_name] = field_value
+                
+                # Add AOI, coverage, and centroid information
+                metadata.update({
+                    "aoi_km2": aoi_km2,
+                    "coverage_percentage": coverage_percentage,
+                    "centroid_lat": centroid_lat,  # FIX: Actually calculate centroid
+                    "centroid_lon": centroid_lon,  # FIX: Actually calculate centroid
+                    "geometry": final_geometry,
+                })
+                
+                # Ensure scene_id is properly set
+                if not metadata.get("scene_id"):
+                    metadata["scene_id"] = properties.get("id") or scene.get("id") or f"scene_{i:04d}"
+                
+                processed_scenes.append(metadata)
+                
             except Exception as e:
-                logger.warning(f"Error processing scene: {e}")
+                logger.error(f"Error processing scene {i}: {e}")
                 continue
-
-        logger.info(
-            f"Processed {len(processed_scenes)} valid scenes from {len(scenes)} input scenes"
-        )
+        
+        logger.info(f"Successfully processed {len(processed_scenes)}/{len(scenes)} scenes")
         return processed_scenes
 
+
     def _create_scene_geodataframe(self, scene_data: List[Dict]) -> gpd.GeoDataFrame:
-        """Create GeoDataFrame from processed scene data."""
+        """Enhanced GeoDataFrame creation with better type handling and validation."""
         if not scene_data:
             raise ValueError("No scene data provided")
 
         # Get the appropriate attribute schema
         schema = self.attribute_schemas[self.config.attribute_schema]
+        
+        logger.info(f"Creating GeoDataFrame with {self.config.attribute_schema} schema ({len(schema)} fields)")
 
-        # Prepare data with schema compliance
+        # Prepare data with enhanced schema compliance and type conversion
         rows = []
         for scene in scene_data:
             row = {}
 
-            # Map scene data to schema fields
+            # Map scene data to schema fields with robust type conversion
             for field_name, field_config in schema.items():
                 if field_name == "geometry":
                     continue  # Handle geometry separately
@@ -281,22 +373,52 @@ class GeoPackageManager:
                 # Get value from scene data
                 value = scene.get(field_name)
 
-                # Apply type conversion and validation
+                # Enhanced type conversion with better error handling
                 if value is not None:
                     try:
-                        if field_config["type"] == "TEXT":
-                            value = str(value)
-                        elif field_config["type"] == "REAL":
-                            value = float(value)
-                        elif field_config["type"] == "INTEGER":
-                            value = int(value)
-                        elif field_config["type"] == "DATE":
-                            if isinstance(value, str):
-                                value = pd.to_datetime(value).date()
-                    except (ValueError, TypeError):
-                        value = None
-
-                row[field_name] = value
+                        field_type = field_config["type"]
+                        
+                        if field_type == "TEXT":
+                            row[field_name] = str(value)
+                        elif field_type == "REAL":
+                            # Handle numeric conversion more robustly
+                            if isinstance(value, (int, float)):
+                                row[field_name] = float(value)
+                            elif isinstance(value, str) and value.strip():
+                                row[field_name] = float(value)
+                            else:
+                                row[field_name] = None
+                        elif field_type == "INTEGER":
+                            if isinstance(value, (int, float)):
+                                row[field_name] = int(value)
+                            elif isinstance(value, str) and value.strip():
+                                row[field_name] = int(float(value))  # Handle "10.0" -> 10
+                            else:
+                                row[field_name] = None
+                        elif field_type == "BOOLEAN":
+                            if isinstance(value, bool):
+                                row[field_name] = value
+                            elif isinstance(value, str):
+                                row[field_name] = value.lower() in ("true", "1", "yes", "on")
+                            else:
+                                row[field_name] = bool(value)
+                        elif field_type == "DATE":
+                            if isinstance(value, str) and value:
+                                # Handle ISO format dates
+                                if "T" in value:
+                                    row[field_name] = pd.to_datetime(value).date()
+                                else:
+                                    row[field_name] = pd.to_datetime(value).date()
+                            else:
+                                row[field_name] = value
+                        else:
+                            row[field_name] = value
+                            
+                    except (ValueError, TypeError) as e:
+                        logger.debug(f"Type conversion error for {field_name} = {value}: {e}")
+                        row[field_name] = None
+                else:
+                    row[field_name] = None
 
             rows.append(row)
 
@@ -305,16 +427,18 @@ class GeoPackageManager:
         gdf = gpd.GeoDataFrame(rows, geometry=geometries, crs=self.config.target_crs)
 
         # Ensure consistent column order
-        ordered_columns = [col for col in schema.keys() if col != "geometry"] + [
-            "geometry"
-        ]
-        gdf = gdf.reindex(
-            columns=[col for col in ordered_columns if col in gdf.columns]
-        )
+        ordered_columns = [col for col in schema.keys() if col != "geometry"] + ["geometry"]
+        gdf = gdf.reindex(columns=[col for col in ordered_columns if col in gdf.columns])
 
-        logger.info(
-            f"Created GeoDataFrame with {len(gdf)} features and {len(gdf.columns)} attributes"
-        )
+        logger.info(f"Created GeoDataFrame with {len(gdf)} features and {len(gdf.columns)} attributes")
+        
+        # Log summary of non-null values for key fields
+        key_fields = ["scene_id", "acquired", "cloud_cover", "aoi_km2", "coverage_percentage"]
+        for field in key_fields:
+            if field in gdf.columns:
+                non_null_count = gdf[field].notna().sum()
+                logger.info(f"  {field}: {non_null_count}/{len(gdf)} non-null values")
+        
         return gdf
 
     def _write_footprints_layer(
@@ -1060,6 +1184,101 @@ class GeoPackageManager:
         except Exception as e:
             logger.error(f"GeoPackage validation failed: {e}")
             return False
+    def validate_geopackage_metadata(self, geopackage_path: str) -> Dict:
+        """
+        NEW METHOD: Validate metadata completeness in created GeoPackage.
+        
+        Returns a detailed report on metadata quality and completeness.
+        """
+        try:
+            import geopandas as gpd
+            
+            gdf = gpd.read_file(geopackage_path)
+            schema = self.attribute_schemas[self.config.attribute_schema]
+            
+            report = {
+                "file_path": geopackage_path,
+                "total_features": len(gdf),
+                "total_attributes": len(gdf.columns),
+                "schema_type": self.config.attribute_schema,
+                "schema_compliance": {},
+                "missing_fields": [],
+                "null_value_analysis": {},
+                "aoi_analysis": {},
+                "recommendations": []
+            }
+            
+            # Check schema compliance
+            for field_name in schema.keys():
+                if field_name == "geometry":
+                    continue
+                    
+                if field_name in gdf.columns:
+                    null_count = gdf[field_name].isnull().sum()
+                    null_percentage = (null_count / len(gdf)) * 100
+                    
+                    report["schema_compliance"][field_name] = "present"
+                    report["null_value_analysis"][field_name] = {
+                        "null_count": int(null_count),
+                        "null_percentage": round(null_percentage, 2),
+                        "non_null_count": len(gdf) - null_count
+                    }
+                else:
+                    report["missing_fields"].append(field_name)
+                    report["schema_compliance"][field_name] = "missing"
+            
+            # AOI-specific analysis
+            if "aoi_km2" in gdf.columns:
+                aoi_values = gdf["aoi_km2"].dropna()
+                report["aoi_analysis"] = {
+                    "scenes_with_aoi": int((aoi_values > 0).sum()),
+                    "total_aoi_km2": float(aoi_values.sum()),
+                    "average_aoi_km2": float(aoi_values.mean()) if len(aoi_values) > 0 else 0.0,
+                    "max_aoi_km2": float(aoi_values.max()) if len(aoi_values) > 0 else 0.0,
+                    "scenes_no_overlap": int((aoi_values == 0).sum()),
+                    "aoi_calculation_success": True
+                }
+            else:
+                report["aoi_analysis"] = {
+                    "aoi_calculation_success": False,
+                    "message": "AOI field not found in GeoPackage"
+                }
+            
+            # Generate recommendations
+            if report["missing_fields"]:
+                report["recommendations"].append(
+                    f"Missing {len(report['missing_fields'])} expected fields from schema"
+                )
+            
+            high_null_fields = [
+                field for field, stats in report["null_value_analysis"].items()
+                if stats["null_percentage"] > 50
+            ]
+            
+            if high_null_fields:
+                report["recommendations"].append(
+                    f"High null values (>50%) in: {', '.join(high_null_fields[:3])}"
+                )
+            
+            if report["aoi_analysis"].get("aoi_calculation_success"):
+                aoi_scenes = report["aoi_analysis"]["scenes_with_aoi"]
+                if aoi_scenes == 0:
+                    report["recommendations"].append("No scenes overlap with ROI - check geometry alignment")
+                elif aoi_scenes < len(gdf) * 0.5:
+                    report["recommendations"].append("Less than 50% of scenes overlap with ROI")
+                else:
+                    report["recommendations"].append(f"AOI calculation successful: {aoi_scenes} scenes overlap ROI")
+            
+            if not report["missing_fields"] and not high_null_fields:
+                report["recommendations"].append("Metadata completeness is excellent!")
+            
+            return report
+            
+        except Exception as e:
+            return {
+                "error": f"Failed to validate metadata: {e}",
+                "file_path": geopackage_path
+            }
 
     def get_geopackage_info(self, geopackage_path: str) -> Dict:
         """Get comprehensive information about a GeoPackage."""
@@ -1243,57 +1462,112 @@ class GeoPackageManager:
         finally:
             conn.close()
 
-    # Schema definitions
     def _get_minimal_schema(self) -> Dict:
-        """Get minimal attribute schema."""
+        """Enhanced minimal schema with essential Planet API fields."""
         return {
+            # Core essentials
             "scene_id": {"type": "TEXT", "description": "Unique scene identifier"},
-            "acquired": {"type": "TEXT", "description": "Acquisition date"},
-            "cloud_cover": {"type": "REAL", "description": "Cloud cover percentage"},
-            "area_km2": {"type": "REAL", "description": "Scene area in km²"},
-        }
-
-    def _get_standard_schema(self) -> Dict:
-        """Get standard attribute schema."""
-        minimal = self._get_minimal_schema()
-        additional = {
+            "acquired": {"type": "TEXT", "description": "Acquisition datetime"},
             "satellite_id": {"type": "TEXT", "description": "Satellite identifier"},
             "item_type": {"type": "TEXT", "description": "Planet item type"},
+            
+            # Quality essentials
+            "cloud_cover": {"type": "REAL", "description": "Cloud cover percentage (0-1)"},
+            "cloud_percent": {"type": "REAL", "description": "Cloud percentage"},
+            "clear_percent": {"type": "REAL", "description": "Clear pixels percentage"},
+            
+            # Area calculations
+            "area_km2": {"type": "REAL", "description": "Scene area in km²"},
+            "aoi_km2": {"type": "REAL", "description": "Area of intersection with ROI in km²"},
+            "coverage_percentage": {"type": "REAL", "description": "ROI coverage percentage"},
+        }
+
+
+    # =============================================================================
+    # UPDATE 2: Enhanced _get_standard_schema (most Planet API fields)
+    # =============================================================================
+
+    def _get_standard_schema(self) -> Dict:
+        """Enhanced standard schema with most Planet API fields as standard."""
+        minimal = self._get_minimal_schema()
+        additional = {
+            # Technical specifications
+            "provider": {"type": "TEXT", "description": "Data provider"},
+            "instrument": {"type": "TEXT", "description": "Instrument type"},
+            "gsd": {"type": "REAL", "description": "Ground sample distance (m)"},
+            "pixel_resolution": {"type": "REAL", "description": "Pixel resolution (m)"},
+            "ground_control": {"type": "BOOLEAN", "description": "Ground control points available"},
+            "quality_category": {"type": "TEXT", "description": "Quality category"},
+            "strip_id": {"type": "TEXT", "description": "Strip identifier"},
+            
+            # Enhanced quality metrics (from your Planet API example)
+            "clear_confidence_percent": {"type": "REAL", "description": "Clear confidence percentage"},
+            "visible_percent": {"type": "REAL", "description": "Visible pixels percentage"},
+            "visible_confidence_percent": {"type": "REAL", "description": "Visible confidence percentage"},
+            "shadow_percent": {"type": "REAL", "description": "Shadow percentage"},
+            "snow_ice_percent": {"type": "REAL", "description": "Snow/ice percentage"},
+            "heavy_haze_percent": {"type": "REAL", "description": "Heavy haze percentage"},
+            "light_haze_percent": {"type": "REAL", "description": "Light haze percentage"},
+            "anomalous_pixels": {"type": "REAL", "description": "Anomalous pixels"},
+            
+            # Solar and viewing geometry
             "sun_elevation": {"type": "REAL", "description": "Sun elevation angle"},
             "sun_azimuth": {"type": "REAL", "description": "Sun azimuth angle"},
-            "quality_category": {"type": "TEXT", "description": "Quality category"},
+            "satellite_azimuth": {"type": "REAL", "description": "Satellite azimuth angle"},
+            "view_angle": {"type": "REAL", "description": "View angle in degrees"},
+            
+            # Temporal information
+            "published": {"type": "TEXT", "description": "Publication datetime"},
+            "updated": {"type": "TEXT", "description": "Last update datetime"},
+            "publishing_stage": {"type": "TEXT", "description": "Publishing stage"},
+            
+            # Calculated geometry
             "acquisition_date": {"type": "DATE", "description": "Acquisition date"},
             "centroid_lat": {"type": "REAL", "description": "Centroid latitude"},
             "centroid_lon": {"type": "REAL", "description": "Centroid longitude"},
         }
         return {**minimal, **additional}
 
+
+    # =============================================================================
+    # UPDATE 3: Enhanced _get_comprehensive_schema (ALL Planet API fields)
+    # =============================================================================
+
     def _get_comprehensive_schema(self) -> Dict:
-        """Get comprehensive attribute schema."""
+        """Enhanced comprehensive schema with ALL possible Planet API fields."""
         standard = self._get_standard_schema()
         additional = {
-            "published": {"type": "TEXT", "description": "Publication date"},
-            "updated": {"type": "TEXT", "description": "Last update date"},
-            "provider": {"type": "TEXT", "description": "Data provider"},
-            "instrument": {"type": "TEXT", "description": "Instrument type"},
-            "gsd": {"type": "REAL", "description": "Ground sample distance"},
+            # Additional technical details
+            "platform": {"type": "TEXT", "description": "Satellite platform"},
+            "spacecraft_id": {"type": "TEXT", "description": "Spacecraft identifier"},
             "epsg_code": {"type": "INTEGER", "description": "EPSG code"},
-            "usable_data": {"type": "REAL", "description": "Usable data percentage"},
-            "anomalous_pixels": {
-                "type": "REAL",
-                "description": "Anomalous pixels percentage",
-            },
-            "overall_quality": {"type": "REAL", "description": "Overall quality score"},
-            "suitability": {"type": "TEXT", "description": "Scene suitability rating"},
-            "pixel_resolution": {
-                "type": "REAL",
-                "description": "Pixel resolution in meters",
-            },
             "processing_level": {"type": "TEXT", "description": "Processing level"},
-            "geometric_accuracy": {
-                "type": "TEXT",
-                "description": "Geometric accuracy category",
-            },
+            
+            # Enhanced quality and radiometric
+            "usable_data": {"type": "REAL", "description": "Usable data percentage (0-1)"},
+            "overall_quality": {"type": "REAL", "description": "Overall quality score (0-1)"},
+            "suitability": {"type": "TEXT", "description": "Scene suitability rating"},
+            "geometric_accuracy": {"type": "TEXT", "description": "Geometric accuracy category"},
+            "radiometric_target": {"type": "TEXT", "description": "Radiometric calibration target"},
+            "black_fill": {"type": "REAL", "description": "Black fill percentage"},
+            
+            # Advanced viewing geometry
+            "off_nadir": {"type": "REAL", "description": "Off-nadir angle in degrees"},
+            "azimuth_angle": {"type": "REAL", "description": "Azimuth angle in degrees"},
+            
+            # Temporal details (enhanced)
+            "acquisition_time": {"type": "TEXT", "description": "Time of acquisition"},
+            "day_of_year": {"type": "INTEGER", "description": "Day of year (1-366)"},
+            
+            # Geometric bounds (calculated from geometry)
+            "bounds_west": {"type": "REAL", "description": "Western boundary longitude"},
+            "bounds_south": {"type": "REAL", "description": "Southern boundary latitude"}, 
+            "bounds_east": {"type": "REAL", "description": "Eastern boundary longitude"},
+            "bounds_north": {"type": "REAL", "description": "Northern boundary latitude"},
+            
+            # Calculated geometric properties
+            "perimeter_km": {"type": "REAL", "description": "Scene perimeter in km"},
+            "aspect_ratio": {"type": "REAL", "description": "Scene aspect ratio (width/height)"},
         }
         return {**standard, **additional}
 
