@@ -362,6 +362,7 @@ def quick_scene_search_and_export(
     ONE-LINE function for search + export with detailed results.
     
     ENHANCED with ALL Planet API search parameters and comprehensive statistics.
+    FIXED: Returns consistent structure whether scenes are found or not.
     
     Usage:
         # Basic search and export
@@ -388,8 +389,12 @@ def quick_scene_search_and_export(
         **search_params: Additional Planet API search parameters
     
     Returns:
-        dict: Comprehensive results including scene count, area coverage, statistics
+        dict: CONSISTENT comprehensive results including scene count, area coverage, statistics
     """
+    # Initialize default return structure
+    search_options = {}
+    roi_area_km2 = 0
+    
     try:
         # Parse ROI
         if not isinstance(roi, Polygon):
@@ -401,6 +406,9 @@ def quick_scene_search_and_export(
                 roi_polygon = roi
         else:
             roi_polygon = roi
+        
+        # Calculate ROI area
+        roi_area_km2 = calculate_area_km2(roi_polygon)
         
         # Search scenes with comprehensive Planet API parameters
         query = PlanetScopeQuery()
@@ -443,15 +451,13 @@ def quick_scene_search_and_export(
             if param in search_params:
                 search_options[param] = search_params[param]
         
+        # Execute search
         results = query.search_scenes(**search_options)
-        
         scenes = results.get('features', [])
         
-        # Calculate statistics
-        roi_area_km2 = calculate_area_km2(roi_polygon)
-        
+        # FIXED: Always return consistent structure
         if scenes:
-            # Create GeoPackage
+            # Scenes found - create GeoPackage and calculate statistics
             if output_path is None:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 output_path = f"scenes_{len(scenes)}_{timestamp}.gpkg"
@@ -528,17 +534,18 @@ def quick_scene_search_and_export(
                 }
             
             if quality_categories:
-                quality_counts = Counter(quality_categories)  # FIXED: Counter is now imported
+                quality_counts = Counter(quality_categories)
                 statistics['quality_distribution'] = dict(quality_counts)
             
             if satellite_ids:
-                satellite_counts = Counter(satellite_ids)  # FIXED: Counter is now imported
+                satellite_counts = Counter(satellite_ids)
                 statistics['satellite_distribution'] = dict(satellite_counts)
                 statistics['unique_satellites'] = len(set(satellite_ids))
             
+            # SUCCESSFUL RESULT - with scenes
             return {
                 'success': True,
-                'scenes_found': len(scenes),  # FIXED: Use 'scenes_found' not 'total_scenes'
+                'scenes_found': len(scenes),
                 'roi_area_km2': roi_area_km2,
                 'total_coverage_km2': total_scene_area,
                 'coverage_ratio': total_scene_area / roi_area_km2 if roi_area_km2 > 0 else 0,
@@ -549,23 +556,47 @@ def quick_scene_search_and_export(
                     'unique_dates': len(set(acquisition_dates)) if acquisition_dates else 0
                 },
                 'geopackage_path': geopackage_path,
-                'search_parameters': search_options
+                'search_parameters': search_options,
+                'message': f'Successfully found {len(scenes)} scenes'
             }
         else:
+            # FIXED: No scenes found - return consistent structure with default values
             return {
                 'success': False,
                 'scenes_found': 0,
                 'roi_area_km2': roi_area_km2,
-                'message': 'No scenes found for the specified criteria',
-                'search_parameters': search_options
+                'total_coverage_km2': 0.0,  # FIXED: Always include
+                'coverage_ratio': 0.0,     # FIXED: Always include
+                'statistics': {},          # FIXED: Always include (empty)
+                'date_range': {            # FIXED: Always include
+                    'start': None,
+                    'end': None,
+                    'unique_dates': 0
+                },
+                'geopackage_path': None,   # FIXED: Always include (None when no scenes)
+                'search_parameters': search_options,
+                'message': 'No scenes found for the specified criteria. Try relaxing filters.'
             }
             
     except Exception as e:
         logger.error(f"Scene search and export failed: {e}")
+        # FIXED: Error case - return consistent structure
         return {
             'success': False,
+            'scenes_found': 0,
+            'roi_area_km2': roi_area_km2,
+            'total_coverage_km2': 0.0,  # FIXED: Always include
+            'coverage_ratio': 0.0,     # FIXED: Always include  
+            'statistics': {},          # FIXED: Always include (empty)
+            'date_range': {            # FIXED: Always include
+                'start': None,
+                'end': None,
+                'unique_dates': 0
+            },
+            'geopackage_path': None,   # FIXED: Always include (None on error)
+            'search_parameters': search_options,
             'error': str(e),
-            'search_parameters': search_options if 'search_options' in locals() else {}
+            'message': f'Search failed: {str(e)}'
         }
 
 
