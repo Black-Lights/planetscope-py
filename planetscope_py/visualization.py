@@ -57,7 +57,7 @@ class DensityVisualizer:
             figsize: Default figure size for plots
         """
         self.figsize = figsize
-        self.default_cmap = "viridis"
+        self.default_cmap = "turbo"
 
         # Set up matplotlib for better defaults
         plt.style.use("default")
@@ -714,85 +714,70 @@ class DensityVisualizer:
         if hasattr(density_result, "stats") and "error" not in density_result.stats:
             stats = density_result.stats
 
-            # Calculate enhanced statistics including clipped data
-            stats_data = [
-                ["Original Count", f"{stats['count']:,}"],
-                ["Original Min", f"{stats['min']:.1f}"],
-                ["Original Max", f"{stats['max']:.1f}"],
-                ["Original Mean", f"{stats['mean']:.2f}"],
-                ["Original Std", f"{stats['std']:.2f}"],
-            ]
-
-            if hasattr(stats, 'median'):
-                stats_data.extend([
-                    ["Original Median", f"{stats['median']:.1f}"],
-                ])
-
-            # Add clipped statistics if applicable
-            if clip_to_roi and roi_polygon is not None and len(valid_data) > 0:
-                clipped_stats = [
-                    ["", ""],  # Separator
-                    ["ROI Count", f"{len(valid_data):,}"],
-                    ["ROI Min", f"{np.min(valid_data):.1f}"],
-                    ["ROI Max", f"{np.max(valid_data):.1f}"],
-                    ["ROI Mean", f"{np.mean(valid_data):.2f}"],
-                    ["ROI Median", f"{np.median(valid_data):.1f}"],
-                    ["ROI Std", f"{np.std(valid_data):.2f}"],
-                    ["Total Scenes", f"{np.sum(valid_data):.0f}"],
-                ]
-                stats_data.extend(clipped_stats)
-
-            # Method and timing info
-            method_info = [
-                ["", ""],  # Separator
-                [
-                    "Method",
-                    (
-                        getattr(density_result, "method_used", "Unknown").value
-                        if hasattr(
-                            getattr(density_result, "method_used", None), "value"
-                        )
-                        else str(getattr(density_result, "method_used", "Unknown"))
-                    ),
-                ],
-                ["Time", f"{getattr(density_result, 'computation_time', 0):.2f}s"],
-                ["Resolution", f"{density_result.grid_info.get('resolution', 'N/A')}m"],
-                [
-                    "Grid Size",
-                    f"{density_result.grid_info.get('width', 0)}×{density_result.grid_info.get('height', 0)}",
-                ],
-            ]
-
-            all_data = stats_data + method_info
-
-            # Set title FIRST with proper positioning
-            title3 = "Statistics Summary"
+            # Always calculate meaningful statistics from the display data (what user sees)
             if clip_to_roi and roi_polygon is not None:
-                title3 += "\n(Original vs ROI-Clipped)"
-            ax3.text(0.5, 0.95, title3, 
+                # Use ROI-clipped data (what's actually shown in the density map)
+                analysis_data = display_array[display_array != no_data_value]
+                stats_title = "ROI Analysis Results"
+                coverage_note = f"Analysis of {len(analysis_data):,} pixels within ROI"
+            else:
+                # Use full grid data
+                analysis_data = density_array[density_array != no_data_value]
+                stats_title = "Full Grid Analysis Results" 
+                coverage_note = f"Analysis of {len(analysis_data):,} total pixels"
+
+            if len(analysis_data) > 0:
+                # Calculate the meaningful statistics you want
+                stats_data = [
+                    ["Pixels Analyzed", f"{len(analysis_data):,}"],
+                    ["Density Range", f"{np.min(analysis_data):.1f} - {np.max(analysis_data):.1f}"],
+                    ["Mean Density", f"{np.mean(analysis_data):.2f}"],
+                    ["Median Density", f"{np.median(analysis_data):.1f}"],
+                    ["Std Deviation", f"{np.std(analysis_data):.2f}"],
+                    ["Total Scenes", f"{np.sum(analysis_data):.0f}"],
+                    ["", ""],  # Separator
+                    ["Method", (
+                        getattr(density_result, "method_used", "Unknown").value
+                        if hasattr(getattr(density_result, "method_used", None), "value")
+                        else str(getattr(density_result, "method_used", "Unknown"))
+                    )],
+                    ["Computation Time", f"{getattr(density_result, 'computation_time', 0):.2f}s"],
+                    ["Grid Resolution", f"{density_result.grid_info.get('resolution', 'N/A')}m"],
+                    ["Grid Dimensions", f"{density_result.grid_info.get('width', 0)}×{density_result.grid_info.get('height', 0)}"],
+                ]
+            else:
+                stats_data = [["No valid data", "N/A"]]
+
+            # Set clear title
+            ax3.text(0.5, 0.95, stats_title, 
                     transform=ax3.transAxes, 
                     ha='center', va='top',
-                    fontsize=11)  # FIXED: More padding and styling
+                    fontsize=12, weight='bold')
+            
+            # Add coverage note
+            ax3.text(0.5, 0.88, coverage_note, 
+                    transform=ax3.transAxes, 
+                    ha='center', va='top',
+                    fontsize=9, style='italic')
 
             # Remove axis ticks and labels
             ax3.set_xlim(0, 1)
             ax3.set_ylim(0, 1)
             ax3.axis("off")
 
-            # Create enhanced table with adjusted positioning
+            # Create clean table with your meaningful statistics
             table_data = []
             colors = []
-            for i, (label, value) in enumerate(all_data):
+            for label, value in stats_data:
                 if label == "":  # Separator row
                     continue
                 table_data.append([label, value])
                 
-                if "Original" in label:
-                    colors.append(["lightblue", "white"])
-                elif "ROI" in label:
-                    colors.append(["lightgreen", "white"])
+                # Color coding for different types of information
+                if label in ["Pixels Analyzed", "Density Range", "Mean Density", "Median Density", "Std Deviation", "Total Scenes"]:
+                    colors.append(["lightblue", "white"])  # Main analysis results
                 else:
-                    colors.append(["lightgray", "white"])
+                    colors.append(["lightgray", "white"])  # Technical info
 
             if table_data:
                 table = ax3.table(
@@ -800,29 +785,22 @@ class DensityVisualizer:
                     cellColours=colors,
                     cellLoc="left",
                     loc="center",
-                    colWidths=[0.4, 0.4],
-                    bbox=[0.0, 0.0, 1.0, 0.88]  # Adjust this to 0.88 for perfect spacing
+                    colWidths=[0.5, 0.4],
+                    bbox=[0.0, 0.0, 1.0, 0.82]  # Adjusted for title and note
                 )
                 table.auto_set_font_size(False)
                 table.set_fontsize(9)
-                table.scale(1, 1.6)  # Slightly increase scaling for better readability
-                
-                # Style the table headers
-                for i in range(len(table_data)):
-                    if i == 0:  # First row
-                        table[(i, 0)].set_text_props(weight='bold')
-                        table[(i, 1)].set_text_props(weight='bold')
+                table.scale(1, 1.4)
 
         else:
             ax3.text(
-                0.5,
-                0.5,
+                0.5, 0.5,
                 "No statistics available",
                 transform=ax3.transAxes,
-                ha="center",
-                va="center",
+                ha="center", va="center",
+                fontsize=12
             )
-            ax3.set_title("Statistics Summary", pad=20)
+            ax3.set_title("Analysis Results", pad=20)
             ax3.axis("off")
 
         # 4. ENHANCED scene footprints with INCREASED limits
@@ -1028,15 +1006,26 @@ class DensityVisualizer:
                 (max_val, "240,249,33,255")
             ]
             gradient_stops = "0.25;126,3,168,255:0.5;203,70,121,255:0.75;248,149,64,255"
-        else:  # Default to viridis
+        elif colormap == "turbo":
             color_stops = [
-                (min_val, "68,1,84,255"),
-                (min_val + (max_val-min_val)*0.25, "59,82,139,255"),
-                (min_val + (max_val-min_val)*0.5, "33,145,140,255"),
-                (min_val + (max_val-min_val)*0.75, "94,201,98,255"),
-                (max_val, "253,231,37,255")
+                (min_val, "48,18,59,255"),                                    # Dark purple
+                (min_val + (max_val-min_val)*0.2, "50,130,189,255"),         # Cyan
+                (min_val + (max_val-min_val)*0.4, "53,183,121,255"),         # Green
+                (min_val + (max_val-min_val)*0.6, "142,203,57,255"),         # Yellow-green
+                (min_val + (max_val-min_val)*0.8, "253,231,37,255"),         # Yellow
+                (max_val, "122,4,3,255")                                     # Dark red
             ]
-            gradient_stops = "0.25;59,82,139,255:0.5;33,145,140,255:0.75;94,201,98,255"
+            gradient_stops = "0.2;50,130,189,255:0.4;53,183,121,255:0.6;142,203,57,255:0.8;253,231,37,255"
+        else:  # Default to turbo (changed from viridis)
+            color_stops = [
+                (min_val, "48,18,59,255"),                                    # Dark purple
+                (min_val + (max_val-min_val)*0.2, "50,130,189,255"),         # Cyan
+                (min_val + (max_val-min_val)*0.4, "53,183,121,255"),         # Green
+                (min_val + (max_val-min_val)*0.6, "142,203,57,255"),         # Yellow-green
+                (min_val + (max_val-min_val)*0.8, "253,231,37,255"),         # Yellow
+                (max_val, "122,4,3,255")                                     # Dark red
+            ]
+            gradient_stops = "0.2;50,130,189,255:0.4;53,183,121,255:0.6;142,203,57,255:0.8;253,231,37,255"
 
         # Create enhanced QML content
         qml_content = f"""<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>
