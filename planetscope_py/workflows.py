@@ -554,6 +554,7 @@ def quick_analysis(
     period: str = "last_month", 
     output_dir: str = "./output",
     max_scenes_footprint: int = 150,  # NEW parameter with increased default
+    show_plots: bool = True,  # NEW: Add this parameter
     **config_overrides
 ) -> Dict[str, Any]:
     """
@@ -578,7 +579,8 @@ def quick_analysis(
         'create_visualizations': True,
         'export_geotiff': True,
         'clip_to_roi': True,
-        'max_scenes_footprint': max_scenes_footprint  # Pass through the parameter
+        'max_scenes_footprint': max_scenes_footprint, # Pass through the parameter
+        'show_plots': show_plots  # Pass through the parameter
     }
     defaults.update(config_overrides)
     
