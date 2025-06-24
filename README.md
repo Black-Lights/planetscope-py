@@ -9,6 +9,7 @@ A professional Python library for PlanetScope satellite imagery analysis, provid
 [![Asset Management](https://img.shields.io/badge/Asset%20Management-Complete-green.svg)](#asset-management-complete)
 [![Test Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](#testing)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![PyPI version](https://badge.fury.io/py/planetscope-py.svg)](https://badge.fury.io/py/planetscope-py)
 
 ## Status
 
