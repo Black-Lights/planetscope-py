@@ -6,14 +6,14 @@ Simple one-line functions for GeoPackage creation following the pattern
 from density analysis and visualization modules.
 
 Author: Ammar & Umayr  
-Version: 4.0.0 (Enhanced)
+Version: 4.0.0 (Enhanced) - FIXED
 """
 
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Union, Dict, Any, Optional, List
-from collections import Counter
+from collections import Counter  # FIXED: Import at top level
 from shapely.geometry import Polygon, shape
 
 from .query import PlanetScopeQuery
@@ -65,23 +65,7 @@ def quick_geopackage_export(
         sun_elevation_min: Minimum sun elevation in degrees
         ground_control: Require ground control points (True/False/None)
         quality_category: Required quality category ("test", "standard", etc.)
-        **kwargs: Additional Planet API search parameters:
-            - visible_percent_min (float): Minimum visible pixels percentage
-            - clear_percent_min (float): Minimum clear pixels percentage
-            - usable_data_min (float): Minimum usable data percentage (0.0-1.0)
-            - shadow_percent_max (float): Maximum shadow percentage
-            - snow_ice_percent_max (float): Maximum snow/ice percentage
-            - heavy_haze_percent_max (float): Maximum heavy haze percentage
-            - light_haze_percent_max (float): Maximum light haze percentage
-            - anomalous_pixels_max (float): Maximum anomalous pixels
-            - view_angle_max (float): Maximum view angle in degrees
-            - off_nadir_max (float): Maximum off-nadir angle in degrees
-            - gsd_min (float): Minimum ground sample distance in meters
-            - gsd_max (float): Maximum ground sample distance in meters
-            - satellite_ids (List[str]): Specific satellite IDs to include
-            - instrument (str): Specific instrument type
-            - provider (str): Data provider filter
-            - processing_level (str): Processing level requirement
+        **kwargs: Additional Planet API parameters (see documentation)
     
     Returns:
         str: Path to created GeoPackage file
@@ -401,13 +385,7 @@ def quick_scene_search_and_export(
         ground_control: Require ground control points (True/False/None)
         quality_category: Required quality category ("test", "standard", etc.)
         item_types: Planet item types to search (default: ["PSScene"])
-        **search_params: Additional Planet API search parameters:
-            - visible_percent_min, clear_percent_min, usable_data_min
-            - shadow_percent_max, snow_ice_percent_max, heavy_haze_percent_max
-            - light_haze_percent_max, anomalous_pixels_max, view_angle_max
-            - off_nadir_max, gsd_min, gsd_max, satellite_ids, instrument
-            - provider, processing_level, clear_confidence_percent_min
-            - visible_confidence_percent_min, pixel_resolution_min/max
+        **search_params: Additional Planet API search parameters
     
     Returns:
         dict: Comprehensive results including scene count, area coverage, statistics
@@ -550,18 +528,17 @@ def quick_scene_search_and_export(
                 }
             
             if quality_categories:
-                quality_counts = Counter(quality_categories)
+                quality_counts = Counter(quality_categories)  # FIXED: Counter is now imported
                 statistics['quality_distribution'] = dict(quality_counts)
             
             if satellite_ids:
-                from collections import Counter
-                satellite_counts = Counter(satellite_ids)
+                satellite_counts = Counter(satellite_ids)  # FIXED: Counter is now imported
                 statistics['satellite_distribution'] = dict(satellite_counts)
                 statistics['unique_satellites'] = len(set(satellite_ids))
             
             return {
                 'success': True,
-                'scenes_found': len(scenes),
+                'scenes_found': len(scenes),  # FIXED: Use 'scenes_found' not 'total_scenes'
                 'roi_area_km2': roi_area_km2,
                 'total_coverage_km2': total_scene_area,
                 'coverage_ratio': total_scene_area / roi_area_km2 if roi_area_km2 > 0 else 0,
@@ -588,7 +565,7 @@ def quick_scene_search_and_export(
         return {
             'success': False,
             'error': str(e),
-            'search_parameters': search_options
+            'search_parameters': search_options if 'search_options' in locals() else {}
         }
 
 
