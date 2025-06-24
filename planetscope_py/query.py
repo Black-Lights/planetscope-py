@@ -527,8 +527,6 @@ class PlanetScopeQuery:
         Returns:
             Dictionary mapping scene IDs to tile information
         """
-        import math
-        from shapely.geometry import shape
         
         logger.info(f"Getting tile URLs for {len(scene_ids)} scenes at zoom level {zoom_level}")
         
@@ -705,7 +703,7 @@ class PlanetScopeQuery:
     def filter_scenes_by_quality(
         self,
         scenes: List[Dict],
-        min_quality: float = 0.7,
+        min_visible_fraction: float = 0.7,
         max_cloud_cover: float = 0.2,
         exclude_night: bool = True,
     ) -> List[Dict]:
@@ -713,7 +711,7 @@ class PlanetScopeQuery:
 
         Args:
             scenes: List of scene features from search results
-            min_quality: Minimum quality score (0.0-1.0)
+            min_visible_fraction: Minimum visible area fraction (0.0-1.0)
             max_cloud_cover: Maximum cloud cover (0.0-1.0)
             exclude_night: Exclude nighttime acquisitions
 
@@ -741,10 +739,13 @@ class PlanetScopeQuery:
                 if sun_elevation is not None and sun_elevation < 10:
                     continue
 
-            # Check usable data percentage
-            usable_data = properties.get("usable_data", 0.0)
-            if usable_data < min_quality:
-                continue
+            # Check visible data percentage
+            visible_percent = properties.get("visible_percent")
+            if visible_percent is not None:
+                visible_fraction = visible_percent / 100.0  # Convert to 0.0-1.0 range
+                if visible_fraction < min_visible_fraction:
+                    continue
+            # If visible_percent is missing, don't reject the scene
 
             filtered_scenes.append(scene)
 
