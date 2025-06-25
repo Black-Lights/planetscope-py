@@ -222,7 +222,7 @@ milan_*
 planetscope_analysis/
 create_gpkg_*
 output*
-jupyter*
+jupyter-notebooks/
 test_quota_api.py
 temp_*
 test_analysis.gpkg
