@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Setup configuration for planetscope-py v4.0.0."""
+"""Setup configuration for planetscope-py v4.0.1."""
 
 from pathlib import Path
 
@@ -18,22 +18,42 @@ if readme_file.exists():
     with open(readme_file, "r", encoding="utf-8") as f:
         long_description = f.read()
 
-# Core requirements (production)
+# Core requirements (production) - Updated June 2025
 install_requires = [
+    # HTTP requests (latest stable)
     "requests>=2.32.4",
+    
+    # Geometric operations (latest with NumPy 2.x support)
     "shapely>=2.1.0",
+    
+    # Coordinate transformations (latest stable)
     "pyproj>=3.7.1",
+    
+    # Numerical computing (latest stable - NumPy 2.x)
     "numpy>=2.2.0",
+    
+    # Data manipulation (latest with NumPy 2.x compatibility)
     "pandas>=2.2.3",
+    
+    # Date/time handling
     "python-dateutil>=2.9.0",
+    
+    # JSON processing (faster alternative to built-in json)
     "orjson>=3.10.0",
-    # v4.0.0 Enhanced Dependencies
-    "xarray>=2024.02.0",              # Temporal analysis data structures
+    
+    # Enhanced Dependencies for v4.0.0+
+    "xarray>=2024.02.0",              # Temporal analysis data cubes
     "aiohttp>=3.8.0",                # Async asset downloads
     "geopandas>=1.0.1",             # GeoPackage vector operations
     "fiona>=1.9.0",                  # GeoPackage I/O
     "rasterio>=1.4.3",               # Raster processing and clipping
     "scipy>=1.13.0",                  # Statistical analysis for temporal patterns
+    
+    # Visualization Dependencies (moved to core for v4.0.1 fix)
+    "matplotlib>=3.10.0",            # Core plotting functionality
+    "contextily>=1.6.2",             # Basemaps in visualizations (fixes import issues)
+    "folium>=0.19.1",                # Interactive mapping capabilities
+    "seaborn>=0.12.2",               # Statistical data visualization
 ]
 
 setup(
@@ -97,39 +117,34 @@ setup(
         ],
         "jupyter": [
             "jupyter>=1.1.1",
-            "ipywidgets>=8.1.5",
+            "ipywidgets>=8.1.5",            # Interactive controls (moved to core)
             "notebook>=7.3.1",
-            "matplotlib>=3.10.0",
-            "folium>=0.19.1",
         ],
         "spatial": [
-            "geopandas>=1.0.1",
-            "rasterio>=1.4.3",
-            "matplotlib>=3.10.0",
+            # Core spatial dependencies now in main requirements
+            "plotly>=5.24.1",                # Advanced plotting
         ],
         "temporal": [
-            "xarray>=2024.02.0",
-            "scipy>=1.13.0",
-            "seaborn>=0.12.2",
-            "matplotlib>=3.10.0",
+            # Core temporal dependencies now in main requirements  
+            "plotly>=5.24.1",                # Advanced plotting for temporal data
         ],
         "asset": [
-            "aiohttp>=3.8.0",
+            # Core asset dependencies now in main requirements
+            "tqdm>=4.66.0",                  # Progress bars for downloads
         ],
         "geopackage": [
-            "geopandas>=1.0.1",
-            "fiona>=1.9.0",
-            "rasterio>=1.4.3",
+            # Core geopackage dependencies now in main requirements
+            "sqlite3",                       # Database operations (built-in)
         ],
         "interactive": [
             "ipywidgets>=8.1.5",
             "jupyter>=1.1.1",
+            "notebook>=7.3.1",
         ],
         "viz": [
-            "matplotlib>=3.10.0",
-            "folium>=0.19.1",
-            "plotly>=5.24.1",
-            "seaborn>=0.12.2",
+            # Core viz dependencies now in main requirements
+            "plotly>=5.24.1",                # Advanced interactive plotting
+            "bokeh>=3.0.0",                  # Alternative plotting backend
         ],
         "performance": [
             "line-profiler>=4.2.0",
@@ -148,17 +163,13 @@ setup(
             "sphinx>=8.1.3",
             "sphinx-rtd-theme>=3.0.2",
             "jupyter>=1.1.1",
-            "ipywidgets>=8.1.5",
-            "matplotlib>=3.10.0",
-            "folium>=0.19.1",
-            "geopandas>=1.0.1",
-            "rasterio>=1.4.3",
-            "plotly>=5.24.1",
-            "seaborn>=0.12.2",
-            # v4.0.0 specific
-            "xarray>=2024.02.0",
-            "aiohttp>=3.8.0",
-            "scipy>=1.13.0",
+            "ipywidgets>=8.1.5",            # Interactive controls
+            "notebook>=7.3.1",
+            "plotly>=5.24.1",                # Advanced plotting
+            "bokeh>=3.0.0",                  # Alternative plotting
+            "tqdm>=4.66.0",                  # Progress bars
+            # Note: Core visualization dependencies (matplotlib, contextily, folium, seaborn) 
+            # are now included in the base installation
         ],
     },
     package_data={
@@ -196,6 +207,8 @@ setup(
         "scene-footprints",
         "metadata-processing",
         "quality-assessment",
+        "bug-fix",  # Added for v4.0.1
+        "import-fixes",  # Added for v4.0.1
     ],
     project_urls={
         "Bug Reports": "https://github.com/Black-Lights/planetscope-py/issues",

@@ -1,9 +1,8 @@
 # Core dependencies for planetscope-py (Production)
-# Updated: June 2025 with latest compatible versions
+# Updated: June 2025 with latest compatible versions and import fixes
 
 # HTTP requests (latest stable)
 requests>=2.32.4
-contextily>=1.6.2 # For basemaps in visualizations
 
 # Geometric operations (latest with NumPy 2.x support)
 shapely>=2.1.0
@@ -20,15 +19,24 @@ pandas>=2.2.3
 # Date/time handling
 python-dateutil>=2.9.0
 
-# JSON processing (optional, faster alternative)
+# JSON processing (faster alternative to built-in json)
 orjson>=3.10.0
 
-# Phase 4 Enhanced Dependencies
+# Enhanced Dependencies for v4.0.0+
 xarray>=2024.02.0              # Temporal analysis data cubes
 aiohttp>=3.8.0                # Async asset downloads
 geopandas>=1.0.1             # GeoPackage vector operations
 fiona>=1.9.0                  # GeoPackage I/O
 rasterio>=1.4.3               # Raster processing and clipping
-ipywidgets>=8.1.5             # Interactive notebook features (optional)
 scipy>=1.13.0                  # Statistical analysis for temporal patterns
-seaborn>=0.12.2                # Statistical data visualization
+
+# Visualization Dependencies (moved to core in v4.0.1 to fix import issues)
+matplotlib>=3.10.0            # Core plotting functionality
+contextily>=1.6.2             # Basemaps in visualizations (fixes contextily import errors)
+folium>=0.19.1                # Interactive mapping capabilities
+seaborn>=0.12.2               # Statistical data visualization
+
+# Optional Interactive Features (install separately if needed)
+# ipywidgets>=8.1.5             # Interactive notebook features
+# jupyter>=1.1.1               # Jupyter notebook support
+# plotly>=5.24.1                # Advanced interactive plotting

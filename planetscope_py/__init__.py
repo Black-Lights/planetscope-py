@@ -97,8 +97,10 @@ try:
         plot_histogram_only, export_geotiff_only
     )
     _VISUALIZATION_AVAILABLE = True
-except ImportError:
-    pass
+    print(" Visualization module loaded successfully")
+except ImportError as e:
+    _VISUALIZATION_AVAILABLE = False
+    warnings.warn(f"Visualization not available: {e}")
 
 # Adaptive Grid Engine
 _ADAPTIVE_GRID_AVAILABLE = False
@@ -174,8 +176,10 @@ try:
         quick_density_plot, quick_footprints_plot, quick_geotiff_export
     )
     _WORKFLOWS_AVAILABLE = True
-except ImportError:
-    pass
+    print(" Workflows module loaded successfully")
+except ImportError as e:
+    _WORKFLOWS_AVAILABLE = False
+    warnings.warn(f"Workflows not available: {e}")
 
 # Configuration Presets
 _CONFIG_PRESETS_AVAILABLE = False

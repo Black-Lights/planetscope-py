@@ -5,42 +5,86 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.1] - 2025-06-25
+
+### Fixed - Critical Import and Module Availability Issues
+
+#### Import System Fixes
+- **Fixed Silent Import Failures**: Replaced silent `except ImportError: pass` statements with proper error handling
+- **Enhanced Module Detection**: Fixed `_WORKFLOWS_AVAILABLE` and `_VISUALIZATION_AVAILABLE` flags not being set correctly
+- **Improved Error Messages**: Added specific installation instructions for missing dependencies
+- **Debug Confirmations**: Added success print statements to confirm when modules load correctly
+
+#### Workflow Function Fixes
+- **Fixed `quick_planet_analysis`**: Function now works correctly after fixing workflow module availability detection
+- **Fixed Visualization Functions**: `plot_density_map_only`, `plot_footprints_only`, and `export_geotiff_only` now work properly
+- **Fixed Module Status Reporting**: `check_module_status()` now accurately reports component availability
+
+#### Dependency Handling
+- **Clear Installation Instructions**: Error messages now include specific `pip install` commands for missing dependencies
+- **Better Dependency Detection**: Enhanced logic for detecting optional dependencies like `contextily`, `matplotlib`, `folium`
+- **Graceful Degradation**: Improved fallback behavior when optional components are unavailable
+
+### Enhanced
+
+#### Error Handling and Debugging
+- **Comprehensive Warnings**: All import failures now generate helpful warning messages
+- **Installation Guidance**: Error messages include specific dependency installation commands
+- **Success Confirmations**: Added "✅ Module loaded successfully" messages for debugging
+- **Better Exception Context**: Import errors now provide more detailed information about what's missing
+
+#### Module Status System
+- **Accurate Availability Reporting**: Fixed discrepancies between actual availability and reported status
+- **Enhanced Diagnostics**: Improved `check_module_status()` function with better reporting
+- **Consistent Flag Setting**: All availability flags now set correctly based on actual import success
+
+### Technical Improvements
+
+#### Import Logic
+- **Robust Import Handling**: Enhanced import logic throughout `__init__.py`
+- **Consistent Error Patterns**: Standardized error handling across all module imports
+- **Debug Information**: Added debugging capabilities to help identify import issues
+
+#### User Experience
+- **Immediate Feedback**: Users now get clear feedback about what's working and what's missing
+- **Actionable Errors**: Error messages include specific steps to resolve issues
+- **Better Documentation**: Enhanced inline documentation for troubleshooting
+
+### Dependencies
+
+No changes to dependencies - this is purely a bug fix release that ensures the existing dependencies are properly detected and imported.
+
 ## [4.0.0] - 2025-06-25
 
 ### Added - Complete Temporal Analysis & Advanced Data Management
 
 #### Complete Temporal Analysis Engine
-- **TemporalAnalyzer**: Grid-based temporal pattern analysis with comprehensive metrics
-- **Temporal Metrics**: Coverage days, interval statistics, temporal density, and frequency analysis
-- **Grid-Based Approach**: Same grid methodology as spatial density analysis for consistency
-- **Multiple Temporal Resolutions**: Daily, weekly, and monthly analysis capabilities
-- **Temporal Statistics**: Complete statistical analysis including mean, median, min/max intervals
-- **ROI Clipping Support**: Full integration with coordinate system fixes
-- **Export Capabilities**: Professional GeoTIFF export with QGIS-compatible styling
+- **Grid-Based Temporal Pattern Analysis**: Complete temporal analysis using coordinate-corrected grid approach
+- **Multiple Temporal Metrics**: Coverage days, mean/median intervals, temporal density, and frequency analysis
+- **Performance Optimization**: FAST and ACCURATE methods with automatic selection
+- **Professional Outputs**: GeoTIFF export with QGIS styling and comprehensive metadata
+- **ROI Integration**: Full integration with coordinate system fixes and flexible input formats
 
 #### Enhanced Spatial Analysis Engine
-- **SpatialDensityEngine**: Multi-algorithm spatial density calculations
-- **Three Computational Methods**: Rasterization, vector overlay, and adaptive grid approaches
+- **Multi-Algorithm Density Calculation**: Rasterization, vector overlay, and adaptive grid methods
 - **Automatic Method Selection**: Intelligent algorithm selection based on dataset characteristics
 - **High-Resolution Support**: 3m to 1000m grid resolutions with sub-pixel accuracy
 - **Performance Optimization**: Memory-efficient processing with configurable limits
-- **Cross-Platform Compatibility**: Standardized grid structures across all analysis types
+- **Coordinate System Fixes**: Proper north-to-south orientation with corrected transforms
 
 #### Advanced Asset Management
-- **AssetManager**: Intelligent quota monitoring and asset activation system
-- **Real-time Quota Tracking**: Live monitoring of Planet subscription usage
+- **Intelligent Quota Monitoring**: Real-time tracking of Planet subscription usage
 - **Async Download Management**: Parallel downloads with retry logic and progress tracking
 - **ROI Clipping Integration**: Automatic scene clipping during download process
 - **User Confirmation System**: Interactive prompts with quota impact calculations
 - **Download Verification**: Integrity checking for downloaded assets
 
 #### Professional Data Export
-- **GeoPackageManager**: Comprehensive GeoPackage creation with metadata
+- **GeoPackage Creation**: Comprehensive GeoPackage files with metadata integration
 - **Multi-Layer Support**: Vector polygons and raster imagery in standardized files
 - **GIS Software Integration**: Direct compatibility with QGIS, ArcGIS, and other tools
 - **Comprehensive Metadata**: Rich attribute schemas with quality metrics
-- **Imagery Integration**: Optional inclusion of downloaded scene imagery
-- **One-Line Export Functions**: Simplified API for quick data export
+- **Flexible Schemas**: Support for minimal, standard, and comprehensive attribute schemas
 
 #### New Components
 - `TemporalAnalyzer`: Main temporal analysis interface with grid-based calculations
@@ -52,14 +96,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `AssetStatus`, `QuotaInfo`, `DownloadJob`: Asset management data structures
 - `GeoPackageManager`: Professional data export system
 - `GeoPackageConfig`, `LayerInfo`, `RasterInfo`: Export configuration classes
-
-#### Advanced Features
-- **Grid Compatibility**: Consistent grid structures between spatial and temporal analysis
-- **Coordinate System Fixes**: Enhanced CRS handling and transformation accuracy
-- **Memory Management**: Intelligent memory usage with configurable optimization levels
-- **Progress Tracking**: Real-time progress reporting for long-running operations
-- **Error Recovery**: Robust error handling with detailed context and recovery options
-- **Interactive Controls**: Optional Jupyter notebook widgets for enhanced user experience
 
 ### Enhanced
 
@@ -76,10 +112,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Metadata Processing**: Comprehensive metadata extraction and validation
 
 #### Visualization and Export
-- **DensityVisualizer**: Professional visualization with four-panel summary plots
-- **Individual Plot Functions**: Direct access to specific visualization types
+- **Professional Visualization**: Multi-panel summary plots with comprehensive statistics
 - **GeoTIFF Export**: GIS-compatible export with automatic QGIS styling
 - **Statistical Analysis**: Comprehensive statistics for all analysis types
+- **Cross-Platform Standards**: Standardized file formats and metadata schemas
 
 #### Testing Infrastructure
 - **349 Tests**: Comprehensive test suite with 100% success rate
@@ -155,7 +191,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Dependencies
 
-#### New Core Dependencies
+#### Core Dependencies
 - **xarray>=2024.02.0**: Multi-dimensional data structures for temporal analysis
 - **aiohttp>=3.8.0**: Async HTTP client for asset downloads
 - **geopandas>=1.0.1**: Geospatial data processing for GeoPackage export
@@ -294,7 +330,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
-- **v4.0.0**: Complete Temporal Analysis & Advanced Data Management (Current)
+- **v4.0.1**: Bug Fix Release - Fixed Module Availability Issues (Current)
+- **v4.0.0**: Complete Temporal Analysis & Advanced Data Management
 - **v3.0.0**: Spatial Analysis Engine Complete
 - **v2.0.0**: Planet API Integration Complete
 - **v1.0.0**: Foundation and Core Infrastructure
