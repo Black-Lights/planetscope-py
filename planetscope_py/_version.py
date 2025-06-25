@@ -7,17 +7,17 @@ planetscope-py library, following semantic versioning principles.
 """
 
 # Version components
-__version_info__ = (4, 0, 0)
+__version_info__ = (4, 0, 1)
 
 # Main version string
-__version__ = "4.0.0"
+__version__ = "4.0.1"
 
 # Version status
 __version_status__ = "stable"
 
 # Build information
 __build_date__ = "2025-06-25"
-__build_number__ = "001"
+__build_number__ = "002"
 
 # Phase information
 __phase__ = "Phase 4: Complete Temporal Analysis & Advanced Data Management"
@@ -35,6 +35,7 @@ __features__ = {
     "performance_optimization": True,
     "visualization": True,
     "async_operations": True,
+    "import_fixes": True,  # NEW in v4.0.1
 }
 
 # Compatibility information
@@ -60,46 +61,45 @@ __version_history__ = {
     "2.0.0": "Planet API Integration Complete",
     "3.0.0": "Spatial Analysis Engine Complete",
     "4.0.0": "Complete Temporal Analysis & Advanced Data Management",
+    "4.0.1": "Bug Fix Release - Fixed Module Availability Issues",
 }
 
 # Release notes for current version
 __release_notes__ = """
-PlanetScope-py v4.0.0 - Complete Temporal Analysis & Advanced Data Management
+PlanetScope-py v4.0.1 - Bug Fix Release
 
-NEW FEATURES:
-- Complete temporal analysis with grid-based approach
-- Advanced spatial density analysis with three computational methods
-- Professional GeoPackage export with metadata integration
-- Intelligent asset management with quota monitoring
-- Async download capabilities with progress tracking
+CRITICAL FIXES:
+- Fixed workflow module availability detection
+- Fixed silent import failures in __init__.py  
+- Fixed quick_planet_analysis function not working
+- Fixed visualization module import issues
+- Added proper error messages for missing dependencies
 
-CORE CAPABILITIES:
-- Multi-algorithm spatial density calculations (rasterization, vector overlay, adaptive grid)
-- Grid-based temporal pattern analysis with comprehensive metrics
-- Professional data export (GeoPackage, GeoTIFF with QGIS styling)
-- Real-time quota monitoring and asset activation
-- Cross-platform coordinate system compatibility
+IMPROVEMENTS:
+- Enhanced import debugging with success confirmations
+- Better dependency installation instructions in error messages
+- Improved module status reporting accuracy
+- More robust error handling throughout the library
 
-TECHNICAL IMPROVEMENTS:
-- 349 comprehensive tests with 100% success rate
-- Memory-optimized processing for large datasets
-- Robust error handling and recovery mechanisms
-- Enhanced metadata processing and quality assessment
-- Professional visualization and export capabilities
+TECHNICAL DETAILS:
+- Replaced silent 'except ImportError: pass' with proper warnings
+- Added debug print statements for successful module loads
+- Enhanced _WORKFLOWS_AVAILABLE and _VISUALIZATION_AVAILABLE flag setting
+- Improved check_module_status() function accuracy
 
-PERFORMANCE:
-- Sub-second processing for high-resolution spatial analysis
-- Efficient temporal pattern detection
-- Parallel asset downloads with retry logic
-- Optimized memory usage for large-scale analysis
+USER IMPACT:
+This release ensures that quick_planet_analysis and all workflow functions 
+work correctly. Users should no longer encounter ImportError issues when 
+all dependencies are properly installed.
 
-DEPENDENCIES:
-- Core: requests, shapely, pandas, numpy, geopandas, rasterio
-- Temporal: xarray, scipy
-- Asset Management: aiohttp
-- Export: fiona, sqlite3
-- Visualization: matplotlib, seaborn (optional)
-- Interactive: ipywidgets (optional)
+INSTALLATION:
+pip install --upgrade planetscope-py
+
+VERIFICATION:
+After upgrading, users can verify the fix with:
+import planetscope_py
+planetscope_py.check_module_status()
+from planetscope_py import quick_planet_analysis  # Should work now
 """
 
 # Deprecation warnings for future versions
@@ -114,6 +114,7 @@ __feature_flags__ = {
     "enable_roi_clipping": True,
     "enable_grid_optimization": True,
     "enable_coordinate_fixes": True,
+    "enable_import_debugging": True,  # NEW in v4.0.1
 }
 
 
@@ -229,6 +230,22 @@ def get_feature_availability():
         except ImportError:
             actual_features["geopackage_export"] = False
 
+        # Check workflow functions (v4.0.1 fix verification)
+        try:
+            from planetscope_py import quick_planet_analysis
+
+            actual_features["workflow_functions"] = True
+        except ImportError:
+            actual_features["workflow_functions"] = False
+
+        # Check visualization (v4.0.1 fix verification)
+        try:
+            from planetscope_py import plot_density_map_only
+
+            actual_features["visualization_functions"] = True
+        except ImportError:
+            actual_features["visualization_functions"] = False
+
         return actual_features
 
     except ImportError:
@@ -247,6 +264,43 @@ def validate_version_format():
         raise ValueError(f"Version {__version__} does not follow semantic versioning")
 
     return True
+
+
+# Test import fixes (v4.0.1 specific)
+def test_import_fixes():
+    """Test that v4.0.1 import fixes are working."""
+    try:
+        import planetscope_py
+        
+        # Test workflow availability
+        workflow_available = planetscope_py._WORKFLOWS_AVAILABLE
+        
+        # Test visualization availability  
+        viz_available = planetscope_py._VISUALIZATION_AVAILABLE
+        
+        # Test actual function imports
+        try:
+            from planetscope_py import quick_planet_analysis
+            workflow_import = True
+        except ImportError:
+            workflow_import = False
+            
+        try:
+            from planetscope_py import plot_density_map_only
+            viz_import = True
+        except ImportError:
+            viz_import = False
+        
+        return {
+            "workflow_flag": workflow_available,
+            "visualization_flag": viz_available,
+            "workflow_import": workflow_import,
+            "visualization_import": viz_import,
+            "fix_successful": workflow_available and viz_available and workflow_import and viz_import
+        }
+        
+    except Exception as e:
+        return {"error": str(e), "fix_successful": False}
 
 
 # Automatic validation on import
@@ -273,4 +327,5 @@ __all__ = [
     "show_version_info",
     "check_version_compatibility",
     "get_feature_availability",
+    "test_import_fixes",  # NEW in v4.0.1
 ]

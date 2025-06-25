@@ -9,18 +9,18 @@ A professional Python library for PlanetScope satellite imagery analysis, provid
 [![Asset Management](https://img.shields.io/badge/Asset%20Management-Complete-green.svg)](#asset-management-complete)
 [![Test Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](#testing)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![PyPI version](https://badge.fury.io/py/planetscope-py.svg)](https://badge.fury.io/py/planetscope-py)
 
 ## Status
 
 **Current Status**: Complete Temporal Analysis & Advanced Data Management  
-**Version**: 4.0.0  
+**Version**: 4.0.1 (Bug Fix Release)  
 **Test Coverage**: 349 tests passing (100%)  
 **API Integration**: Fully functional with real Planet API  
 **Spatial Analysis**: Multi-algorithm density calculations with coordinate system fixes  
 **Temporal Analysis**: Grid-based temporal pattern analysis with performance optimization  
 **Asset Management**: Quota monitoring, downloads, progress tracking  
 **GeoPackage Export**: Scene polygons with imagery support  
+**Import Issues**: Fixed in v4.0.1 (workflow and visualization modules now work correctly)  
 **Python Support**: 3.10+  
 **License**: MIT  
 
@@ -64,6 +64,20 @@ A professional Python library for PlanetScope satellite imagery analysis, provid
 ## Overview
 
 PlanetScope-py is designed for remote sensing researchers, GIS analysts, and Earth observation professionals who need reliable tools for working with PlanetScope satellite imagery. The library provides a robust foundation for scene inventory management, sophisticated spatial-temporal analysis workflows, and professional data export capabilities.
+
+## Recent Updates
+
+### v4.0.1 (2025-06-25) - Bug Fix Release
+- 🐛 **Fixed critical import issues** - `quick_planet_analysis` and visualization functions now work correctly
+- ✅ **Resolved module availability detection** - Fixed `_WORKFLOWS_AVAILABLE` and `_VISUALIZATION_AVAILABLE` flags
+- 📋 **Enhanced error messages** - Clear installation instructions when dependencies are missing
+- 🔧 **Improved debugging** - Added success confirmations for module loading
+
+### v4.0.0 (2025-06-25) - Major Release
+- 🆕 **Complete temporal analysis** with grid-based approach and performance optimization
+- 📊 **Enhanced spatial analysis** with coordinate system fixes and multi-algorithm support  
+- 🗃️ **Advanced data export** with professional GeoPackage creation
+- ⚡ **Asset management** with quota monitoring and async downloads
 
 ## Quick Start
 
@@ -475,6 +489,12 @@ pip install planetscope-py
 ### Enhanced Installation (with all optional features)
 ```bash
 pip install planetscope-py[all]
+```
+
+### Bug Fix Update (v4.0.1)
+If you're experiencing import issues with `quick_planet_analysis` or visualization functions:
+```bash
+pip install --upgrade planetscope-py
 ```
 
 ### Development Installation
