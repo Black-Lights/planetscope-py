@@ -8,6 +8,9 @@ This module implements professional GeoPackage export capabilities including:
 - Multiple raster imagery inclusion with ROI clipping support
 - Cross-platform compatibility and standardized schemas
 - Integration with existing spatial analysis workflows
+
+Author: Ammar & Umayr
+Version: 4.1.0 (Enhanced + Metadata Fixes + JSON Serialization)
 """
 
 import logging

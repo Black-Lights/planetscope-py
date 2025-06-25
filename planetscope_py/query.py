@@ -4,6 +4,9 @@
 This module implements comprehensive Planet Data API interaction capabilities
 including scene search, filtering, preview handling, and batch operations.
 Based on Planet's Data API v1 and following RASD specifications.
+
+Author: Ammar & Umayr
+Version: 4.1.0 (Enhanced + Metadata Fixes + JSON Serialization)
 """
 
 import json

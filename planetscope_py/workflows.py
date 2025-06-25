@@ -10,7 +10,7 @@ NEW FEATURES:
 - GeoTIFF-only export functions
 
 Author: Ammar & Umayr
-Version: 4.0.0 (Updated)
+Version: 4.1.0 (Enhanced + Metadata Fixes + JSON Serialization)
 """
 
 import logging
@@ -132,9 +132,29 @@ def save_analysis_metadata(
     end_date: str,
     metadata_path: str
 ) -> None:
-    """Save comprehensive analysis metadata."""
+    """Save comprehensive analysis metadata with proper JSON serialization."""
     try:
         import json
+        
+        # FIXED: Add JSON serialization converter
+        def convert_to_json_serializable(obj):
+            """Convert numpy types and other objects to JSON-serializable types."""
+            if isinstance(obj, (np.integer, np.int64, np.int32)):
+                return int(obj)
+            elif isinstance(obj, (np.floating, np.float64, np.float32)):
+                return float(obj)
+            elif isinstance(obj, np.ndarray):
+                return obj.tolist()
+            elif isinstance(obj, dict):
+                return {k: convert_to_json_serializable(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [convert_to_json_serializable(item) for item in obj]
+            elif hasattr(obj, 'isoformat'):  # datetime objects
+                return obj.isoformat()
+            elif np.isnan(obj) if isinstance(obj, (float, np.floating)) else False:
+                return None  # Convert NaN to None
+            else:
+                return obj
         
         metadata = {
             "analysis_info": {
@@ -142,7 +162,7 @@ def save_analysis_metadata(
                 "method": "rasterization_corrected",
                 "timestamp": datetime.now().isoformat(),
                 "library_version": "4.0.0",
-                "computation_time_seconds": density_result.computation_time,
+                "computation_time_seconds": float(density_result.computation_time),
                 "coordinate_system_fixed": True,
             },
             "roi_info": {
@@ -155,8 +175,9 @@ def save_analysis_metadata(
                 "end_date": end_date,
                 "scenes_found": len(scenes_result['features']),
             },
-            "grid_info": density_result.grid_info,
-            "density_statistics": density_result.stats,
+            # FIXED: Convert all complex objects to JSON-serializable format
+            "grid_info": convert_to_json_serializable(density_result.grid_info),
+            "density_statistics": convert_to_json_serializable(density_result.stats),
             "coordinate_system": {
                 "crs": density_result.crs,
                 "transform_corrected": True,

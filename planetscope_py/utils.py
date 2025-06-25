@@ -2,6 +2,9 @@
 
 This module provides essential validation, transformation, and helper functions
 used throughout the library.
+
+Author: Ammar & Umayr
+Version: 4.1.0 (Enhanced + Metadata Fixes + JSON Serialization)
 """
 import os
 

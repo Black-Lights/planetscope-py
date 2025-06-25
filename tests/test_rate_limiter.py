@@ -396,7 +396,7 @@ class TestRateLimiter:
 
 
 @pytest.fixture
-def retryable_session():  # ✅ CORRECT: outside class, no 'self'
+def retryable_session():  # ✓ CORRECT: outside class, no 'self'
     """Create RetryableSession instance for testing."""
     rate_limiter = Mock()
 
@@ -423,7 +423,7 @@ class TestRetryableSession:
         """Test successful request through retryable session."""
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.headers = {}  # ✅ Add headers
+        mock_response.headers = {}  # ✓ Add headers
         retryable_session.rate_limiter.make_request.return_value = mock_response
 
         response = retryable_session.request("GET", "https://api.planet.com/test")
@@ -436,14 +436,14 @@ class TestRetryableSession:
         # First response fails, second succeeds
         fail_response = Mock()
         fail_response.status_code = 503
-        fail_response.headers = {}  # ✅ Add headers
+        fail_response.headers = {}  # ✓ Add headers
         fail_response.raise_for_status.side_effect = requests.HTTPError(
             "Service unavailable"
         )
 
         success_response = Mock()
         success_response.status_code = 200
-        success_response.headers = {}  # ✅ Add headers
+        success_response.headers = {}  # ✓ Add headers
 
         retryable_session.rate_limiter.make_request.side_effect = [
             fail_response,
@@ -460,7 +460,7 @@ class TestRetryableSession:
         """Test request failure when max retries exceeded."""
         fail_response = Mock()
         fail_response.status_code = 500
-        fail_response.headers = {}  # ✅ Add headers
+        fail_response.headers = {}  # ✓ Add headers
         fail_response.raise_for_status.side_effect = requests.HTTPError("Server error")
 
         retryable_session.rate_limiter.make_request.return_value = fail_response
@@ -869,7 +869,7 @@ class TestPerformanceAndScalability:
             isinstance(t, (int, float)) for t in request_times
         ), "All request times should be numeric"
 
-        print(f"✅ Concurrent access test passed:")
+        print(f"✓ Concurrent access test passed:")
         print(f"   - {len(request_times)} requests completed successfully")
         print(f"   - Total time: {total_time:.3f}s")
         print(

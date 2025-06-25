@@ -4,6 +4,9 @@ Version information for planetscope-py.
 
 This file contains the version number and related metadata for the
 planetscope-py library, following semantic versioning principles.
+
+Author: Ammar & Umayr
+Version: 4.1.0 (Enhanced + Metadata Fixes + JSON Serialization)
 """
 
 # Version components

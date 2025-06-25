@@ -4,6 +4,9 @@
 This module implements intelligent rate limiting, exponential backoff,
 and retry mechanisms to ensure reliable API communication while respecting
 Planet API limits and best practices.
+
+Author: Ammar & Umayr
+Version: 4.1.0 (Enhanced + Metadata Fixes + JSON Serialization)
 """
 
 import time
@@ -739,7 +742,7 @@ class RetryableSession:
 
         for attempt in range(
             max_retries + 1
-        ):  # ✅ Now max_retries is guaranteed to be an integer
+        ):  # ✓ Now max_retries is guaranteed to be an integer
             try:
                 response = self.rate_limiter.make_request(method, url, **kwargs)
 

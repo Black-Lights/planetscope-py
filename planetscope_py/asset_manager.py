@@ -23,6 +23,9 @@ Key Enhancements:
 - Comprehensive failure analysis and configuration recommendations
 
 FIXED: activate_with_semaphore function now properly defined in _activate_assets_batch method
+
+Author: Ammar & Umayr
+Version: 4.1.0 (Enhanced + Metadata Fixes + JSON Serialization)
 """
 
 import asyncio
@@ -929,7 +932,7 @@ class AssetManager:
 
                             duration = (job.completion_time - job.download_start_time).total_seconds()
                             avg_speed = job.file_size_mb / (duration / 60) if duration > 0 else 0
-                            logger.info(f"✅ Downloaded {job.scene_id} ({job.file_size_mb:.1f} MB) in {duration/60:.1f} min (avg: {avg_speed:.1f} MB/min)")
+                            logger.info(f"✓ Downloaded {job.scene_id} ({job.file_size_mb:.1f} MB) in {duration/60:.1f} min (avg: {avg_speed:.1f} MB/min)")
                             return
 
                         elif response.status == 404:

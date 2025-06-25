@@ -26,7 +26,7 @@ FIXES INCLUDED:
 - Complete function implementations
 
 Author: Ammar & Umayr
-Version: 1.2.0 (Complete Fixed Implementation)
+Version: 4.1.0 (Enhanced + Metadata Fixes + JSON Serialization)
 """
 
 import logging
@@ -1543,9 +1543,9 @@ def _get_metric_colormap(metric: TemporalMetric) -> str:
     if metric in [TemporalMetric.COVERAGE_DAYS, TemporalMetric.TEMPORAL_DENSITY]:
         return "Greens"  # More is better
     elif metric in [TemporalMetric.MEAN_INTERVAL, TemporalMetric.MEDIAN_INTERVAL]:
-        return "Reds_r"  # Less is better (reversed)
+        return "turbo"  # Less is better (reversed)
     else:
-        return "viridis"  # Default
+        return "turbo"  # Default
 
 
 def create_temporal_summary_plot(
@@ -1635,11 +1635,11 @@ def create_temporal_summary_plot(
         im2 = ax2.imshow(
             plot_array,
             extent=extent,
-            cmap="Reds_r",  # Reversed so dark = short intervals (good)
+            cmap="turbo",  # Changed from "Reds_r" to "viridis"
             origin="lower",
             interpolation="nearest",
         )
-        
+                
         # Add colorbar with better positioning
         cbar2 = plt.colorbar(im2, ax=ax2, shrink=0.7, pad=0.02)
         cbar2.set_label("Mean Interval (Days)", rotation=270, labelpad=20)
@@ -1700,115 +1700,134 @@ def create_temporal_summary_plot(
     ax3.grid(True, alpha=0.3)
     ax3.tick_params(labelsize=9)
     
-    # 4. Summary Statistics Table (Bottom Right)
+    # 4. Summary Statistics Table (Bottom Right) - UPDATED to match spatial density styling
     ax4 = fig.add_subplot(gs[1, 1])
-    ax4.axis('off')  # Hide axes for table
     
-    # Prepare comprehensive statistics - organized for better readability
-    stats_data = []
-    
-    # Basic analysis info
-    stats_data.append(["Analysis Type", "Temporal Pattern Analysis"])
-    stats_data.append(["Pixels Analyzed", f"{temporal_result.grid_info['valid_cells']:,}"])
-    stats_data.append(["Grid Resolution", f"{temporal_result.config.spatial_resolution}m"])
-    stats_data.append(["Grid Dimensions", f"{temporal_result.grid_info['width']}×{temporal_result.grid_info['height']}"])
-    
-    # Add separator
-    stats_data.append(["─" * 15, "─" * 15])
-    
-    # Temporal analysis period
-    stats_data.append(["Coverage Period", f"{temporal_result.date_range[0]} to {temporal_result.date_range[1]}"])
-    stats_data.append(["Analysis Days", f"{temporal_result.temporal_stats['analysis_period']['total_days']} days"])
-    
-    # Scene statistics
-    stats_data.append(["Total Scenes", f"{temporal_result.temporal_stats['scene_summary']['total_scenes']:,}"])
-    stats_data.append(["Unique Dates", f"{temporal_result.temporal_stats['scene_summary']['unique_dates']}"])
-    
-    # Add separator
-    stats_data.append(["─" * 15, "─" * 15])
-    
-    # Coverage statistics
-    if TemporalMetric.COVERAGE_DAYS in temporal_result.metric_arrays:
-        coverage_stats = temporal_result.temporal_stats.get('coverage_days_stats', {})
-        if 'mean' in coverage_stats:
-            stats_data.append(["Mean Coverage Days", f"{coverage_stats['mean']:.1f}"])
-            stats_data.append(["Max Coverage Days", f"{coverage_stats['max']:.0f}"])
-    
-    # Interval statistics
-    if TemporalMetric.MEAN_INTERVAL in temporal_result.metric_arrays:
-        interval_stats = temporal_result.temporal_stats.get('mean_interval_stats', {})
-        if 'mean' in interval_stats:
-            stats_data.append(["Mean Interval", f"{interval_stats['mean']:.1f} days"])
-            stats_data.append(["Median Interval", f"{interval_stats['median']:.1f} days"])
-            stats_data.append(["Interval Range", f"{interval_stats['min']:.1f} - {interval_stats['max']:.1f} days"])
-    
-    # Temporal density
-    if TemporalMetric.TEMPORAL_DENSITY in temporal_result.metric_arrays:
-        density_stats = temporal_result.temporal_stats.get('temporal_density_stats', {})
-        if 'mean' in density_stats:
-            stats_data.append(["Temporal Density", f"{density_stats['mean']:.3f} scenes/day"])
-    
-    # Add separator
-    stats_data.append(["─" * 15, "─" * 15])
-    
-    # Processing info
-    stats_data.append(["Optimization Method", f"{temporal_result.grid_info.get('optimization_method', 'unknown')}"])
-    stats_data.append(["Computation Time", f"{temporal_result.computation_time:.1f}s"])
-    stats_data.append(["Coordinate Fixes", "Applied" if temporal_result.coordinate_system_corrected else "Disabled"])
-    
-    # Create table with better spacing
-    table = ax4.table(cellText=stats_data, 
-                     colLabels=None,
-                     cellLoc='left',
-                     loc='center',
-                     colWidths=[0.45, 0.55])  # Adjusted column widths
-    
-    # Style the table
-    table.auto_set_font_size(False)
-    table.set_fontsize(9)  # Slightly smaller font
-    table.scale(1, 1.2)  # Reduced row height
-    
-    # Color alternate rows and handle separators
-    for i in range(len(stats_data)):
-        if "─" in stats_data[i][0]:  # Separator rows
-            table[(i, 0)].set_facecolor('#d0d0d0')
-            table[(i, 1)].set_facecolor('#d0d0d0')
-            table[(i, 0)].set_text_props(weight='normal', color='gray')
-            table[(i, 1)].set_text_props(weight='normal', color='gray')
-        elif i % 2 == 0:
-            table[(i, 0)].set_facecolor('#f8f8f8')
-            table[(i, 1)].set_facecolor('#f8f8f8')
+    # Enhanced statistics summary with time period and cloud cover (like spatial density)
+    if temporal_result.temporal_stats and "error" not in temporal_result.temporal_stats:
+        stats = temporal_result.temporal_stats
+
+        # Calculate meaningful statistics from the display data
+        if clip_to_roi and roi_polygon is not None:
+            # Use first available metric array to determine data coverage
+            sample_array = list(temporal_result.metric_arrays.values())[0]
+            analysis_data = sample_array[sample_array != temporal_result.no_data_value]
+            stats_title = "ROI Analysis Results"
+            coverage_note = f"Analysis of {len(analysis_data):,} pixels within ROI"
         else:
-            table[(i, 0)].set_facecolor('white')
-            table[(i, 1)].set_facecolor('white')
-    
-    # Make first column bold (labels) - except separators
-    for i in range(len(stats_data)):
-        if "─" not in stats_data[i][0]:
-            table[(i, 0)].set_text_props(weight='bold')
-    
-    # Add table title with proper spacing - FIXED
-    ax4.text(0.5, 1.0, "Temporal Analysis Results", 
-             transform=ax4.transAxes, fontsize=12, fontweight='bold',
-             horizontalalignment='center', verticalalignment='top')
-    ax4.text(0.5, 0.96, "Analysis Summary", 
-             transform=ax4.transAxes, fontsize=10,
-             horizontalalignment='center', verticalalignment='top')
-    
-    # Main title with proper spacing
-    analysis_type = "ROI-Clipped" if clip_to_roi else "Full Grid"
-    fig.suptitle(f"Temporal Pattern Analysis Summary ({analysis_type})", 
-                fontsize=16, fontweight='bold', y=0.95)
-    
-    # Save with high quality
-    plt.savefig(save_path, dpi=300, bbox_inches="tight", facecolor='white', edgecolor='none')
-    
-    if show_plots:
-        plt.show()
+            # Use first available metric array to determine data coverage
+            sample_array = list(temporal_result.metric_arrays.values())[0]
+            analysis_data = sample_array[sample_array != temporal_result.no_data_value]
+            stats_title = "Full Grid Analysis Results" 
+            coverage_note = f"Analysis of {len(analysis_data):,} total pixels"
+
+        if len(analysis_data) > 0:
+            # Build enhanced statistics data with time period (like spatial density)
+            stats_data = [
+                ["Pixels Analyzed", f"{len(analysis_data):,}"],
+                ["Grid Resolution", f"{temporal_result.config.spatial_resolution}m"],
+                ["Grid Dimensions", f"{temporal_result.grid_info['width']}x{temporal_result.grid_info['height']}"],
+                ["Total Scenes", f"{temporal_result.temporal_stats['scene_summary']['total_scenes']:,}"],
+                ["Unique Dates", f"{temporal_result.temporal_stats['scene_summary']['unique_dates']}"],
+                ["", ""],  # Separator
+            ]
+            
+            # Add time period information
+            time_period_display = f"{temporal_result.date_range[0]} to {temporal_result.date_range[1]}"
+            stats_data.append(["Time Period", time_period_display])
+            
+            # Add analysis days
+            stats_data.append(["Analysis Days", f"{temporal_result.temporal_stats['analysis_period']['total_days']} days"])
+            
+            stats_data.append(["", ""])  # Separator
+            
+            # Add coverage statistics
+            if TemporalMetric.COVERAGE_DAYS in temporal_result.metric_arrays:
+                coverage_stats = temporal_result.temporal_stats.get('coverage_days_stats', {})
+                if 'mean' in coverage_stats:
+                    stats_data.append(["Mean Coverage Days", f"{coverage_stats['mean']:.1f}"])
+                    stats_data.append(["Max Coverage Days", f"{coverage_stats['max']:.0f}"])
+            
+            # Add interval statistics
+            if TemporalMetric.MEAN_INTERVAL in temporal_result.metric_arrays:
+                interval_stats = temporal_result.temporal_stats.get('mean_interval_stats', {})
+                if 'mean' in interval_stats:
+                    stats_data.append(["Mean Interval", f"{interval_stats['mean']:.1f} days"])
+                    stats_data.append(["Median Interval", f"{interval_stats['median']:.1f} days"])
+            
+            # Add temporal density
+            if TemporalMetric.TEMPORAL_DENSITY in temporal_result.metric_arrays:
+                density_stats = temporal_result.temporal_stats.get('temporal_density_stats', {})
+                if 'mean' in density_stats:
+                    stats_data.append(["Temporal Density", f"{density_stats['mean']:.3f} scenes/day"])
+            
+            stats_data.append(["", ""])  # Separator
+            
+            # Add technical information
+            stats_data.extend([
+                ["Method", f"{temporal_result.grid_info.get('optimization_method', 'unknown')}"],
+                ["Computation Time", f"{temporal_result.computation_time:.2f}s"],
+                ["Coordinate Fixes", "Applied" if temporal_result.coordinate_system_corrected else "Disabled"],
+            ])
+        else:
+            stats_data = [["No valid data", "N/A"]]
+
+        # Set clear title
+        ax4.text(0.5, 0.95, stats_title, 
+                transform=ax4.transAxes, 
+                ha='center', va='top',
+                fontsize=12, weight='bold')
+        
+        # Add coverage note
+        ax4.text(0.5, 0.88, coverage_note, 
+                transform=ax4.transAxes, 
+                ha='center', va='top',
+                fontsize=9, style='italic')
+
+        # Remove axis ticks and labels
+        ax4.set_xlim(0, 1)
+        ax4.set_ylim(0, 1)
+        ax4.axis("off")
+
+        # Create clean table with enhanced statistics (same styling as spatial density)
+        table_data = []
+        colors = []
+        for label, value in stats_data:
+            if label == "":  # Separator row
+                continue
+            table_data.append([label, value])
+            
+            # Color coding for different types of information (same as spatial density)
+            if label in ["Pixels Analyzed", "Grid Resolution", "Grid Dimensions", "Total Scenes", "Unique Dates", "Mean Coverage Days", "Max Coverage Days", "Mean Interval", "Median Interval", "Temporal Density"]:
+                colors.append(["lightblue", "white"])  # Main analysis results
+            elif label in ["Time Period", "Analysis Days"]:
+                colors.append(["lightgreen", "white"])  # Query parameters
+            else:
+                colors.append(["lightgray", "white"])  # Technical info
+
+        if table_data:
+            table = ax4.table(
+                cellText=table_data,
+                cellColours=colors,
+                cellLoc="left",
+                loc="center",
+                colWidths=[0.5, 0.4],
+                bbox=[0.0, 0.0, 1.0, 0.82]
+            )
+            table.auto_set_font_size(False)
+            table.set_fontsize(9)
+            table.scale(1, 1.4)
+
     else:
-        plt.close(fig)
-    
-    logger.info(f"Temporal summary plot saved to: {save_path}")
+        ax4.text(
+            0.5, 0.5,
+            "No statistics available",
+            transform=ax4.transAxes,
+            ha="center", va="center",
+            fontsize=12
+        )
+        ax4.set_title("Analysis Results", pad=20)
+        ax4.axis("off")
 
 
 # Example usage and testing
