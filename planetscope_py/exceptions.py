@@ -2,6 +2,9 @@
 
 This module defines all custom exceptions used throughout the library,
 following Planet API error patterns and providing clear, actionable error messages.
+
+Author: Ammar & Umayr
+Version: 4.1.0 (Enhanced + Metadata Fixes + JSON Serialization)
 """
 
 from typing import Any, Dict, Optional

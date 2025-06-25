@@ -14,7 +14,7 @@ ENHANCED FEATURES:
 - One-line individual plot access functions
 
 Author: Ammar & Umayr
-Version: 3.2 (Complete + Fixed)
+Version: 4.1.0 (Enhanced + Metadata Fixes + JSON Serialization)
 """
 
 import logging

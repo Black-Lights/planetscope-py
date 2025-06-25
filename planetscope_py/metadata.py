@@ -3,6 +3,9 @@
 
 This module provides comprehensive metadata extraction, quality assessment,
 and coverage statistics for Planet imagery following RASD specifications.
+
+Author: Ammar & Umayr
+Version: 4.1.0 (Enhanced + Metadata Fixes + JSON Serialization)
 """
 
 import json
@@ -81,9 +84,17 @@ class MetadataProcessor:
             properties = scene.get("properties", {})
             geometry = scene.get("geometry", {})
 
+            scene_id = (
+                properties.get("id") or           # First try properties.id
+                scene.get("id") or                # Then try top-level id (THIS IS WHERE YOUR ID IS!)
+                properties.get("item_id") or      # Then try properties.item_id
+                scene.get("item_id") or           # Then try top-level item_id
+                properties.get("scene_id")        # Finally try properties.scene_id
+            )
+
             # Basic scene information
             metadata = {
-                "scene_id": properties.get("id"),
+                "scene_id": scene_id,
                 "item_type": properties.get("item_type"),
                 "satellite_id": properties.get("satellite_id"),
                 "provider": properties.get("provider", "planet"),

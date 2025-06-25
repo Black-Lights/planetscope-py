@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Setup configuration for planetscope-py v4.0.1."""
+"""Setup configuration for planetscope-py v4.1.0."""
 
 from pathlib import Path
 
@@ -207,8 +207,11 @@ setup(
         "scene-footprints",
         "metadata-processing",
         "quality-assessment",
-        "bug-fix",  # Added for v4.0.1
-        "import-fixes",  # Added for v4.0.1
+        "metadata-fixes",           # Added for v4.1.0
+        "json-serialization-fixes", # Added for v4.1.0
+        "scene-id-extraction",      # Added for v4.1.0
+        "temporal-visualization",   # Added for v4.1.0
+        "interactive-preview",      # Added for v4.1.0
     ],
     project_urls={
         "Bug Reports": "https://github.com/Black-Lights/planetscope-py/issues",

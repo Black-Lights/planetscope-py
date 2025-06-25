@@ -5,6 +5,81 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.0] - 2025-06-26
+
+### Fixed - Critical Metadata and Serialization Issues
+
+#### Enhanced Scene ID Extraction
+- **Multi-Source Scene ID Detection**: Enhanced metadata processor to check multiple locations for scene IDs
+- **Planet API Compatibility**: Fixed scene ID extraction from different Planet API endpoints (Search, Stats, Orders)
+- **Top-Level ID Support**: Added support for scene IDs in top-level response fields (e.g., scene.id)
+- **Fallback ID Detection**: Comprehensive fallback logic checking properties.id, item_id, and scene_id fields
+- **Robust Error Handling**: Graceful handling of missing or malformed scene identifiers
+
+#### JSON Serialization Fixes
+- **Numpy Type Conversion**: Added comprehensive JSON serialization converter for numpy data types
+- **Metadata Export Completion**: Fixed truncated metadata JSON files in spatial density analysis
+- **Type Safety**: Convert numpy.int64, numpy.float64, and numpy.ndarray to native Python types
+- **Nested Object Handling**: Recursive conversion of complex nested dictionaries and lists
+- **NaN Value Handling**: Proper conversion of numpy.nan values to JSON-compatible null
+
+#### Temporal Analysis Visualization Improvements
+- **Turbo Colormap**: Changed temporal analysis visualizations from 'Reds' to 'turbo' colormap
+- **Enhanced Color Contrast**: Improved visibility and data interpretation in temporal plots
+- **Consistent Styling**: Standardized color schemes across temporal analysis outputs
+- **Summary Table Formatting**: Updated temporal summary tables to match spatial density format
+- **Professional Presentation**: Enhanced visual consistency across all analysis types
+
+#### Interactive and Preview Manager Integration
+- **Configuration Fixes**: Proper integration of preview and interactive managers in configuration
+- **Import Success Reporting**: Enhanced module loading confirmation messages
+- **Availability Flags**: Corrected availability flag setting for preview and interactive components
+- **Integration Testing**: Verified seamless integration between components
+
+### Enhanced
+
+#### Metadata Processing System
+- **Robust Scene Processing**: Enhanced metadata extraction to handle various Planet API response formats
+- **Quality Data Preservation**: Improved handling of quality metrics and scene attributes
+- **Error Recovery**: Better error handling for malformed or incomplete scene data
+- **Validation Improvements**: Enhanced scene data validation and sanitization
+
+#### Export System Reliability
+- **Complete Metadata Export**: Ensured all metadata files are written completely without truncation
+- **File Integrity**: Verified integrity of exported JSON files with proper error handling
+- **Memory Management**: Optimized memory usage during large metadata export operations
+- **Progress Reporting**: Enhanced progress reporting for metadata export operations
+
+#### Visualization Consistency
+- **Color Scheme Standardization**: Unified color schemes across spatial and temporal analysis
+- **Table Format Alignment**: Consistent summary table formatting between analysis types
+- **Professional Output**: Enhanced visual presentation of analysis results
+- **Accessibility Improvements**: Better color contrast and readability in all visualizations
+
+### Technical Improvements
+
+#### Type System Enhancements
+- **JSON Compatibility**: Comprehensive type conversion system for all export operations
+- **Memory Efficiency**: Optimized handling of large numpy arrays during serialization
+- **Error Prevention**: Proactive type checking to prevent serialization errors
+- **Cross-Platform Compatibility**: Consistent behavior across different Python environments
+
+#### Configuration Management
+- **Module Integration**: Improved integration of interactive and preview management modules
+- **Availability Detection**: Enhanced module availability detection and reporting
+- **Error Messaging**: Clear error messages for missing or misconfigured components
+- **Graceful Degradation**: Better fallback behavior when optional components are unavailable
+
+#### Code Quality
+- **Error Handling**: Enhanced error handling throughout metadata processing
+- **Documentation**: Improved inline documentation for troubleshooting
+- **Testing Coverage**: Additional tests for edge cases in metadata extraction
+- **Performance Optimization**: Optimized critical paths in metadata processing
+
+### Dependencies
+
+No changes to core dependencies - this is a bug fix and enhancement release that improves the reliability of existing functionality.
+
 ## [4.0.1] - 2025-06-25
 
 ### Fixed - Critical Import and Module Availability Issues
@@ -30,7 +105,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Error Handling and Debugging
 - **Comprehensive Warnings**: All import failures now generate helpful warning messages
 - **Installation Guidance**: Error messages include specific dependency installation commands
-- **Success Confirmations**: Added "✅ Module loaded successfully" messages for debugging
+- **Success Confirmations**: Added module loaded successfully messages for debugging
 - **Better Exception Context**: Import errors now provide more detailed information about what's missing
 
 #### Module Status System
@@ -330,7 +405,8 @@ No changes to dependencies - this is purely a bug fix release that ensures the e
 
 ## Version History Summary
 
-- **v4.0.1**: Bug Fix Release - Fixed Module Availability Issues (Current)
+- **v4.1.0**: Metadata & Serialization Fixes (Current)
+- **v4.0.1**: Bug Fix Release - Fixed Module Availability Issues
 - **v4.0.0**: Complete Temporal Analysis & Advanced Data Management
 - **v3.0.0**: Spatial Analysis Engine Complete
 - **v2.0.0**: Planet API Integration Complete

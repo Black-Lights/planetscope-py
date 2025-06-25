@@ -6,7 +6,7 @@ Simple one-line functions for GeoPackage creation following the pattern
 from density analysis and visualization modules.
 
 Author: Ammar & Umayr  
-Version: 4.0.0 (Enhanced) - FIXED
+Version: 4.1.0 (Enhanced + Metadata Fixes + JSON Serialization)
 """
 
 import logging

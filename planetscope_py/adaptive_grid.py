@@ -6,6 +6,9 @@ Hierarchical grid refinement for large-scale spatial density analysis.
 This module implements adaptive grid refinement, starting with coarse grids
 and progressively refining high-activity areas to optimize computation
 for large ROIs while maintaining accuracy in data-rich regions.
+
+Author: Ammar & Umayr
+Version: 4.1.0 (Enhanced + Metadata Fixes + JSON Serialization)
 """
 
 import logging

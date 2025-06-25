@@ -2,6 +2,9 @@
 
 This module implements Planet API authentication following the patterns
 established in Planet's official Python client and examples.
+
+Author: Ammar & Umayr
+Version: 4.1.0 (Enhanced + Metadata Fixes + JSON Serialization)
 """
 
 import json

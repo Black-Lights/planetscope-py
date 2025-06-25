@@ -1,0 +1,156 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle with gradient -->
+  <defs>
+    <!-- Main gradient inspired by viridis colormap -->
+    <radialGradient id="earthGradient" cx="50%" cy="30%" r="70%">
+      <stop offset="0%" style="stop-color:#253E95;stop-opacity:1" />
+      <stop offset="30%" style="stop-color:#1F9E89;stop-opacity:1" />
+      <stop offset="60%" style="stop-color:#5FBE6F;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FDE047;stop-opacity:1" />
+    </radialGradient>
+    
+    <!-- Satellite orbit gradient -->
+    <linearGradient id="orbitGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#60A5FA;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#3B82F6;stop-opacity:0.4" />
+    </linearGradient>
+    
+    <!-- Grid overlay gradient -->
+    <linearGradient id="gridGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#FFFFFF;stop-opacity:0.1" />
+    </linearGradient>
+    
+    <!-- Python accent -->
+    <linearGradient id="pythonGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3776AB;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FFD43B;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Main Earth sphere -->
+  <circle cx="100" cy="100" r="85" fill="url(#earthGradient)" />
+  
+  <!-- Satellite orbital path -->
+  <ellipse cx="100" cy="100" rx="70" ry="25" fill="none" stroke="url(#orbitGradient)" stroke-width="2" opacity="0.7" transform="rotate(-15 100 100)" />
+  <ellipse cx="100" cy="100" rx="70" ry="25" fill="none" stroke="url(#orbitGradient)" stroke-width="2" opacity="0.5" transform="rotate(15 100 100)" />
+  
+  <!-- Analysis grid overlay -->
+  <g opacity="0.4">
+    <!-- Horizontal grid lines -->
+    <line x1="25" y1="50" x2="175" y2="50" stroke="url(#gridGradient)" stroke-width="1"/>
+    <line x1="25" y1="75" x2="175" y2="75" stroke="url(#gridGradient)" stroke-width="1"/>
+    <line x1="25" y1="100" x2="175" y2="100" stroke="url(#gridGradient)" stroke-width="1.5"/>
+    <line x1="25" y1="125" x2="175" y2="125" stroke="url(#gridGradient)" stroke-width="1"/>
+    <line x1="25" y1="150" x2="175" y2="150" stroke="url(#gridGradient)" stroke-width="1"/>
+    
+    <!-- Vertical grid lines -->
+    <line x1="50" y1="25" x2="50" y2="175" stroke="url(#gridGradient)" stroke-width="1"/>
+    <line x1="75" y1="25" x2="75" y2="175" stroke="url(#gridGradient)" stroke-width="1"/>
+    <line x1="100" y1="25" x2="100" y2="175" stroke="url(#gridGradient)" stroke-width="1.5"/>
+    <line x1="125" y1="25" x2="125" y2="175" stroke="url(#gridGradient)" stroke-width="1"/>
+    <line x1="150" y1="25" x2="150" y2="175" stroke="url(#gridGradient)" stroke-width="1"/>
+  </g>
+  
+  <!-- Multiple satellites -->
+  <!-- Satellite 1 -->
+  <g transform="translate(140,60) rotate(25)">
+    <!-- Satellite body -->
+    <rect x="-6" y="-3" width="12" height="6" fill="#E5E7EB" stroke="#9CA3AF" stroke-width="0.5"/>
+    <!-- Solar panels -->
+    <rect x="-10" y="-1" width="3" height="2" fill="#1F2937" opacity="0.8"/>
+    <rect x="7" y="-1" width="3" height="2" fill="#1F2937" opacity="0.8"/>
+    <!-- Antenna -->
+    <line x1="0" y1="-3" x2="0" y2="-8" stroke="#6B7280" stroke-width="1"/>
+    <circle cx="0" cy="-8" r="1" fill="#EF4444"/>
+  </g>
+  
+  <!-- Satellite 2 -->
+  <g transform="translate(45,75) rotate(-45)">
+    <!-- Satellite body -->
+    <rect x="-5" y="-2.5" width="10" height="5" fill="#D1D5DB" stroke="#9CA3AF" stroke-width="0.5"/>
+    <!-- Solar panels -->
+    <rect x="-8" y="-0.8" width="2.5" height="1.6" fill="#374151" opacity="0.8"/>
+    <rect x="5.5" y="-0.8" width="2.5" height="1.6" fill="#374151" opacity="0.8"/>
+    <!-- Antenna -->
+    <line x1="0" y1="-2.5" x2="0" y2="-6" stroke="#6B7280" stroke-width="0.8"/>
+    <circle cx="0" cy="-6" r="0.8" fill="#10B981"/>
+  </g>
+  
+  <!-- Satellite 3 -->
+  <g transform="translate(155,140) rotate(65)">
+    <!-- Satellite body -->
+    <rect x="-5" y="-2.5" width="10" height="5" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="0.5"/>
+    <!-- Solar panels -->
+    <rect x="-8" y="-0.8" width="2.5" height="1.6" fill="#1F2937" opacity="0.8"/>
+    <rect x="5.5" y="-0.8" width="2.5" height="1.6" fill="#1F2937" opacity="0.8"/>
+    <!-- Antenna -->
+    <line x1="0" y1="-2.5" x2="0" y2="-6" stroke="#6B7280" stroke-width="0.8"/>
+    <circle cx="0" cy="-6" r="0.8" fill="#F59E0B"/>
+  </g>
+  
+  <!-- Satellite 4 -->
+  <g transform="translate(70,40) rotate(15)">
+    <!-- Satellite body -->
+    <rect x="-4" y="-2" width="8" height="4" fill="#E5E7EB" stroke="#9CA3AF" stroke-width="0.4"/>
+    <!-- Solar panels -->
+    <rect x="-6.5" y="-0.6" width="2" height="1.2" fill="#374151" opacity="0.8"/>
+    <rect x="4.5" y="-0.6" width="2" height="1.2" fill="#374151" opacity="0.8"/>
+    <!-- Antenna -->
+    <line x1="0" y1="-2" x2="0" y2="-5" stroke="#6B7280" stroke-width="0.6"/>
+    <circle cx="0" cy="-5" r="0.6" fill="#8B5CF6"/>
+  </g>
+  
+  <!-- Satellite 5 -->
+  <g transform="translate(165,95) rotate(-35)">
+    <!-- Satellite body -->
+    <rect x="-4" y="-2" width="8" height="4" fill="#D1D5DB" stroke="#9CA3AF" stroke-width="0.4"/>
+    <!-- Solar panels -->
+    <rect x="-6.5" y="-0.6" width="2" height="1.2" fill="#1F2937" opacity="0.8"/>
+    <rect x="4.5" y="-0.6" width="2" height="1.2" fill="#1F2937" opacity="0.8"/>
+    <!-- Antenna -->
+    <line x1="0" y1="-2" x2="0" y2="-5" stroke="#6B7280" stroke-width="0.6"/>
+    <circle cx="0" cy="-5" r="0.6" fill="#EF4444"/>
+  </g>
+  
+  <!-- Satellite 6 -->
+  <g transform="translate(35,125) rotate(75)">
+    <!-- Satellite body -->
+    <rect x="-4" y="-2" width="8" height="4" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="0.4"/>
+    <!-- Solar panels -->
+    <rect x="-6.5" y="-0.6" width="2" height="1.2" fill="#374151" opacity="0.8"/>
+    <rect x="4.5" y="-0.6" width="2" height="1.2" fill="#374151" opacity="0.8"/>
+    <!-- Antenna -->
+    <line x1="0" y1="-2" x2="0" y2="-5" stroke="#6B7280" stroke-width="0.6"/>
+    <circle cx="0" cy="-5" r="0.6" fill="#06B6D4"/>
+  </g>
+  
+  <!-- Data points/scenes scattered -->
+  <g opacity="0.8">
+    <circle cx="60" cy="80" r="2" fill="#10B981"/>
+    <circle cx="85" cy="65" r="1.5" fill="#F59E0B"/>
+    <circle cx="120" cy="90" r="2" fill="#10B981"/>
+    <circle cx="75" cy="115" r="1.5" fill="#F59E0B"/>
+    <circle cx="110" cy="125" r="2" fill="#10B981"/>
+    <circle cx="140" cy="110" r="1.5" fill="#EF4444"/>
+    <circle cx="90" cy="135" r="2" fill="#10B981"/>
+    <circle cx="130" cy="75" r="1.5" fill="#F59E0B"/>
+  </g>
+  
+  <!-- Python-inspired accent in bottom right -->
+  <g transform="translate(165,165)">
+    <circle cx="0" cy="0" r="12" fill="url(#pythonGradient)" opacity="0.9"/>
+    <text x="0" y="5" text-anchor="middle" fill="white" font-family="monospace" font-size="14" font-weight="bold">py</text>
+  </g>
+  
+  <!-- Density heatmap pattern overlay -->
+  <g opacity="0.3">
+    <rect x="45" y="70" width="15" height="15" fill="#059669" rx="2"/>
+    <rect x="65" y="85" width="20" height="20" fill="#0891B2" rx="2"/>
+    <rect x="90" y="95" width="25" height="25" fill="#7C3AED" rx="2"/>
+    <rect x="120" y="80" width="18" height="18" fill="#DC2626" rx="2"/>
+  </g>
+  
+  <!-- Subtle outer glow -->
+  <circle cx="100" cy="100" r="85" fill="none" stroke="#FFFFFF" stroke-width="0.5" opacity="0.4"/>
+</svg>

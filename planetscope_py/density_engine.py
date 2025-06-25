@@ -16,7 +16,7 @@ Key Enhancements:
 - Professional GeoTIFF export with coordinate fixes
 
 Author: Ammar & Umayr
-Version: 4.0.0 (Enhanced)
+Version: 4.1.0 (Enhanced + Metadata Fixes + JSON Serialization)
 """
 
 import logging

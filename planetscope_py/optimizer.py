@@ -5,6 +5,9 @@ Intelligent method selection and performance optimization for spatial density ca
 
 This module provides automatic algorithm selection based on data characteristics,
 performance estimation, memory optimization, and adaptive parameter tuning.
+
+Author: Ammar & Umayr
+Version: 4.1.0 (Enhanced + Metadata Fixes + JSON Serialization)
 """
 
 import logging
