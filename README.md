@@ -13,7 +13,7 @@ A professional Python library for PlanetScope satellite imagery analysis, provid
 
 **Current Status**: Enhanced Metadata Processing & Serialization Fixes  
 **Version**: 4.1.0 (Metadata & Serialization Fix Release)  
-**Test Coverage**: 349 tests passing
+**Test Coverage**: 349 tests passing                
 **API Integration**: Fully functional with real Planet API  
 **Spatial Analysis**: Multi-algorithm density calculations with coordinate system fixes  
 **Temporal Analysis**: Grid-based temporal pattern analysis with enhanced turbo colormap visualizations  
