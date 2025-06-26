@@ -7,14 +7,13 @@ A professional Python library for PlanetScope satellite imagery analysis, provid
 [![Spatial Analysis](https://img.shields.io/badge/Spatial%20Analysis-Complete-green.svg)](#spatial-analysis-complete)
 [![Temporal Analysis](https://img.shields.io/badge/Temporal%20Analysis-Complete-green.svg)](#temporal-analysis-complete)
 [![Asset Management](https://img.shields.io/badge/Asset%20Management-Complete-green.svg)](#asset-management-complete)
-[![Test Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](#testing)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## Status
 
 **Current Status**: Enhanced Metadata Processing & Serialization Fixes  
 **Version**: 4.1.0 (Metadata & Serialization Fix Release)  
-**Test Coverage**: 349 tests passing (100%)  
+**Test Coverage**: 349 tests passing
 **API Integration**: Fully functional with real Planet API  
 **Spatial Analysis**: Multi-algorithm density calculations with coordinate system fixes  
 **Temporal Analysis**: Grid-based temporal pattern analysis with enhanced turbo colormap visualizations  
