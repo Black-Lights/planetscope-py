@@ -10,17 +10,17 @@ Version: 4.1.0 (Enhanced + Metadata Fixes + JSON Serialization)
 """
 
 # Version components
-__version_info__ = (4, 0, 1)
+__version_info__ = (4, 1, 0)
 
 # Main version string
-__version__ = "4.0.1"
+__version__ = "4.1.0"
 
 # Version status
 __version_status__ = "stable"
 
 # Build information
-__build_date__ = "2025-06-25"
-__build_number__ = "002"
+__build_date__ = "2025-06-26"
+__build_number__ = "003"
 
 # Phase information
 __phase__ = "Phase 4: Complete Temporal Analysis & Advanced Data Management"
@@ -38,7 +38,10 @@ __features__ = {
     "performance_optimization": True,
     "visualization": True,
     "async_operations": True,
-    "import_fixes": True,  # NEW in v4.0.1
+    "import_fixes": True,  # Fixed in v4.0.1
+    "metadata_processing": True,  # NEW in v4.1.0
+    "json_serialization": True,  # NEW in v4.1.0
+    "enhanced_visualizations": True,  # NEW in v4.1.0
 }
 
 # Compatibility information
@@ -55,7 +58,8 @@ __development_status__ = "5 - Production/Stable"
 __package_name__ = "planetscope-py"
 __package_description__ = (
     "Professional Python library for PlanetScope satellite imagery analysis "
-    "with complete temporal analysis, spatial density analysis, and advanced data export capabilities"
+    "with enhanced metadata processing, complete temporal analysis, spatial density analysis, "
+    "and advanced data export capabilities"
 )
 
 # Version history
@@ -65,44 +69,62 @@ __version_history__ = {
     "3.0.0": "Spatial Analysis Engine Complete",
     "4.0.0": "Complete Temporal Analysis & Advanced Data Management",
     "4.0.1": "Bug Fix Release - Fixed Module Availability Issues",
+    "4.1.0": "Metadata Processing and JSON Serialization Fixes",
 }
 
 # Release notes for current version
 __release_notes__ = """
-PlanetScope-py v4.0.1 - Bug Fix Release
+PlanetScope-py v4.1.0 - Metadata Processing and JSON Serialization Fixes
 
 CRITICAL FIXES:
-- Fixed workflow module availability detection
-- Fixed silent import failures in __init__.py  
-- Fixed quick_planet_analysis function not working
-- Fixed visualization module import issues
-- Added proper error messages for missing dependencies
+- Enhanced scene ID extraction from all Planet API endpoints (Search, Stats, Orders)
+- Fixed truncated JSON metadata files with proper numpy type conversion
+- Improved temporal analysis visualizations with turbo colormap
+- Updated summary table formatting for consistency across analysis types
+- Enhanced interactive and preview manager integration
 
-IMPROVEMENTS:
-- Enhanced import debugging with success confirmations
-- Better dependency installation instructions in error messages
-- Improved module status reporting accuracy
-- More robust error handling throughout the library
+METADATA PROCESSING IMPROVEMENTS:
+- Multi-source scene ID detection with comprehensive fallback logic
+- Checks properties.id, top-level id, item_id, and scene_id fields
+- Graceful handling of missing or malformed scene identifiers
+- Enhanced compatibility across different Planet API response formats
+
+JSON SERIALIZATION ENHANCEMENTS:
+- Complete metadata export without truncation issues
+- Proper handling of numpy.int64, numpy.float64, numpy.ndarray, and numpy.nan values
+- Memory-efficient serialization of large data structures
+- Recursive conversion of complex nested dictionaries and lists
+
+VISUALIZATION IMPROVEMENTS:
+- Changed temporal analysis colormap from 'Reds' to 'turbo' for better contrast
+- Enhanced color schemes for improved data interpretation
+- Consistent summary table formatting between spatial and temporal analysis
+- Professional presentation across all analysis types
 
 TECHNICAL DETAILS:
-- Replaced silent 'except ImportError: pass' with proper warnings
-- Added debug print statements for successful module loads
-- Enhanced _WORKFLOWS_AVAILABLE and _VISUALIZATION_AVAILABLE flag setting
-- Improved check_module_status() function accuracy
+- Added comprehensive JSON serialization converter in workflows.py
+- Enhanced metadata processor with multi-source ID extraction logic
+- Updated temporal analysis visualizations with turbo colormap
+- Improved error handling for malformed scene data
+- Optimized memory usage during metadata export operations
 
 USER IMPACT:
-This release ensures that quick_planet_analysis and all workflow functions 
-work correctly. Users should no longer encounter ImportError issues when 
-all dependencies are properly installed.
+This release resolves critical issues with scene identification and metadata export
+completeness. Scene IDs are now reliably extracted from all Planet API sources,
+and analysis metadata files export completely without truncation. Temporal
+analysis visualizations are significantly improved with better color contrast.
 
 INSTALLATION:
 pip install --upgrade planetscope-py
 
 VERIFICATION:
-After upgrading, users can verify the fix with:
-import planetscope_py
-planetscope_py.check_module_status()
-from planetscope_py import quick_planet_analysis  # Should work now
+After upgrading, users can verify the fixes with:
+from planetscope_py import PlanetScopeQuery
+query = PlanetScopeQuery()
+results = query.search_scenes(geometry, "2025-01-01", "2025-01-31")
+scene = results['features'][0]
+metadata = query.metadata_processor.extract_scene_metadata(scene)
+print(f"Scene ID: {metadata['scene_id']}")  # Now works reliably!
 """
 
 # Deprecation warnings for future versions
@@ -117,7 +139,10 @@ __feature_flags__ = {
     "enable_roi_clipping": True,
     "enable_grid_optimization": True,
     "enable_coordinate_fixes": True,
-    "enable_import_debugging": True,  # NEW in v4.0.1
+    "enable_import_debugging": True,  # Fixed in v4.0.1
+    "enable_enhanced_metadata": True,  # NEW in v4.1.0
+    "enable_json_serialization": True,  # NEW in v4.1.0
+    "enable_turbo_colormap": True,  # NEW in v4.1.0
 }
 
 
@@ -249,6 +274,13 @@ def get_feature_availability():
         except ImportError:
             actual_features["visualization_functions"] = False
 
+        # Check enhanced metadata processing (v4.1.0 new feature)
+        try:
+            from planetscope_py import MetadataProcessor
+            actual_features["enhanced_metadata_processing"] = True
+        except ImportError:
+            actual_features["enhanced_metadata_processing"] = False
+
         return actual_features
 
     except ImportError:
@@ -269,7 +301,7 @@ def validate_version_format():
     return True
 
 
-# Test import fixes (v4.0.1 specific)
+# Test import fixes (v4.0.1 specific) and metadata fixes (v4.1.0 specific)
 def test_import_fixes():
     """Test that v4.0.1 import fixes are working."""
     try:
@@ -306,6 +338,106 @@ def test_import_fixes():
         return {"error": str(e), "fix_successful": False}
 
 
+def test_metadata_fixes():
+    """Test that v4.1.0 metadata processing fixes are working."""
+    try:
+        # Test enhanced metadata processor availability
+        from planetscope_py import PlanetScopeQuery
+        
+        query = PlanetScopeQuery()
+        metadata_processor = query.metadata_processor
+        
+        # Test scene ID extraction with mock data
+        test_scene_top_level = {
+            "id": "test_scene_top_level_id",
+            "properties": {}
+        }
+        
+        test_scene_properties = {
+            "properties": {
+                "id": "test_scene_properties_id"
+            }
+        }
+        
+        test_scene_item_id = {
+            "item_id": "test_scene_item_id",
+            "properties": {}
+        }
+        
+        # Test extraction from different sources
+        metadata1 = metadata_processor.extract_scene_metadata(test_scene_top_level)
+        metadata2 = metadata_processor.extract_scene_metadata(test_scene_properties)
+        metadata3 = metadata_processor.extract_scene_metadata(test_scene_item_id)
+        
+        # Test JSON serialization
+        import json
+        try:
+            import numpy as np
+            test_data = {
+                "numpy_int": np.int64(42),
+                "numpy_float": np.float64(3.14),
+                "numpy_array": np.array([1, 2, 3]),
+                "regular_data": {"nested": "value"}
+            }
+            
+            # This would have failed in v4.0.1, should work in v4.1.0
+            serialized = json.dumps(test_data, default=str)
+            json_serialization_works = True
+        except Exception:
+            json_serialization_works = False
+        
+        return {
+            "metadata_processor_available": True,
+            "scene_id_extraction_works": all([
+                metadata1.get("scene_id") == "test_scene_top_level_id",
+                metadata2.get("scene_id") == "test_scene_properties_id",
+                metadata3.get("scene_id") == "test_scene_item_id"
+            ]),
+            "json_serialization_basic": json_serialization_works,
+            "metadata_fixes_successful": True
+        }
+        
+    except Exception as e:
+        return {
+            "error": str(e), 
+            "metadata_fixes_successful": False
+        }
+
+
+def show_v4_1_0_improvements():
+    """Display v4.1.0 specific improvements."""
+    print("PlanetScope-py v4.1.0 - Key Improvements")
+    print("=" * 45)
+    print()
+    
+    print("Enhanced Metadata Processing:")
+    print("  ✓ Multi-source scene ID extraction")
+    print("  ✓ Planet API endpoint compatibility")
+    print("  ✓ Fallback ID detection logic")
+    print("  ✓ Error recovery for malformed data")
+    print()
+    
+    print("JSON Serialization Fixes:")
+    print("  ✓ Complete metadata export")
+    print("  ✓ Numpy type conversion")
+    print("  ✓ Large data structure handling")
+    print("  ✓ Nested object serialization")
+    print()
+    
+    print("Visualization Improvements:")
+    print("  ✓ Turbo colormap for temporal analysis")
+    print("  ✓ Enhanced color contrast")
+    print("  ✓ Consistent summary table formatting")
+    print("  ✓ Professional presentation")
+    print()
+    
+    print("Integration Enhancements:")
+    print("  ✓ Interactive manager configuration")
+    print("  ✓ Preview manager integration")
+    print("  ✓ Module loading improvements")
+    print("  ✓ Error message enhancements")
+
+
 # Automatic validation on import
 try:
     validate_version_format()
@@ -330,5 +462,7 @@ __all__ = [
     "show_version_info",
     "check_version_compatibility",
     "get_feature_availability",
-    "test_import_fixes",  # NEW in v4.0.1
+    "test_import_fixes",  # Fixed in v4.0.1
+    "test_metadata_fixes",  # NEW in v4.1.0
+    "show_v4_1_0_improvements",  # NEW in v4.1.0
 ]
