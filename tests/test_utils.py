@@ -1,4 +1,4 @@
-"""Tests for planetscope_py.utils module."""
+"""Tests for planetscope_py.utils module - Updated for enhanced validate_geometry."""
 
 from datetime import datetime, timezone
 
@@ -21,7 +21,7 @@ from planetscope_py.utils import (
 
 
 class TestValidateGeometry:
-    """Test cases for geometry validation."""
+    """Test cases for enhanced geometry validation."""
 
     def test_valid_point(self):
         """Test validation of valid Point geometry."""
@@ -46,12 +46,94 @@ class TestValidateGeometry:
         result = validate_geometry(geometry)
         assert result == geometry
 
-    def test_invalid_type_not_dict(self):
-        """Test validation fails for non-dictionary input."""
-        with pytest.raises(ValidationError) as exc_info:
-            validate_geometry("not a dict")
+    def test_valid_wkt_string(self):
+        """Test validation of valid WKT string."""
+        wkt = "POLYGON((-122.5 37.7, -122.3 37.7, -122.3 37.8, -122.5 37.8, -122.5 37.7))"
+        result = validate_geometry(wkt)
+        
+        # Should return a valid polygon geometry
+        assert result["type"] == "Polygon"
+        assert "coordinates" in result
 
-        assert "must be a dictionary" in str(exc_info.value)
+    def test_valid_point_wkt(self):
+        """Test validation of Point WKT string."""
+        wkt = "POINT(-122.4194 37.7749)"
+        result = validate_geometry(wkt)
+        
+        assert result["type"] == "Point"
+        # Shapely may return coordinates as tuple or list
+        coords = result["coordinates"]
+        assert coords[0] == -122.4194
+        assert coords[1] == 37.7749
+
+    def test_shapely_object(self):
+        """Test validation of Shapely geometry object."""
+        from shapely.geometry import Point
+        
+        point = Point(-122.4194, 37.7749)
+        result = validate_geometry(point)
+        
+        assert result["type"] == "Point"
+        # Shapely may return coordinates as tuple or list
+        coords = result["coordinates"]
+        assert coords[0] == -122.4194
+        assert coords[1] == 37.7749
+
+    def test_shapely_polygon(self):
+        """Test validation of Shapely Polygon object."""
+        from shapely.geometry import Polygon
+        
+        polygon = Polygon([(-122.5, 37.7), (-122.3, 37.7), (-122.3, 37.8), (-122.5, 37.8)])
+        result = validate_geometry(polygon)
+        
+        assert result["type"] == "Polygon"
+        assert "coordinates" in result
+
+    def test_invalid_wkt_string(self):
+        """Test validation fails for invalid WKT string."""
+        with pytest.raises(ValidationError) as exc_info:
+            validate_geometry("INVALID WKT STRING")
+
+        assert "Invalid WKT string" in str(exc_info.value)
+
+    def test_invalid_type_unsupported(self):
+        """Test validation fails for completely unsupported input types."""
+        with pytest.raises(ValidationError) as exc_info:
+            validate_geometry(123)  # Number instead of string/dict/shapely
+
+        assert "Geometry must be a file path, Shapely object, GeoJSON dict, or WKT string" in str(exc_info.value)
+
+    def test_invalid_type_list(self):
+        """Test validation fails for list input."""
+        with pytest.raises(ValidationError) as exc_info:
+            validate_geometry([1, 2, 3])
+
+        assert "Geometry must be a file path, Shapely object, GeoJSON dict, or WKT string" in str(exc_info.value)
+
+    def test_nonexistent_file_path(self):
+        """Test validation fails for non-existent file path."""
+        with pytest.raises(ValidationError) as exc_info:
+            validate_geometry("nonexistent_file.shp")
+
+        assert "File not found" in str(exc_info.value)
+
+    def test_unsupported_file_extension(self):
+        """Test validation fails for unsupported file extension."""
+        # Create a temporary file with unsupported extension
+        import tempfile
+        import os
+        
+        with tempfile.NamedTemporaryFile(suffix='.xyz', delete=False) as tmp:
+            tmp.write(b"test content")
+            tmp_path = tmp.name
+        
+        try:
+            with pytest.raises(ValidationError) as exc_info:
+                validate_geometry(tmp_path)
+            
+            assert "Unsupported file format" in str(exc_info.value)
+        finally:
+            os.unlink(tmp_path)
 
     def test_missing_required_field(self):
         """Test validation fails for missing required fields."""
@@ -116,6 +198,48 @@ class TestValidateGeometry:
             validate_geometry(geometry)
 
         assert "Too few points" in str(exc_info.value)
+
+    def test_geojson_file_simulation(self):
+        """Test validation with simulated GeoJSON file content."""
+        # Test what happens when we pass valid GeoJSON file content as dict
+        geojson_content = {
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [-122.4194, 37.7749]
+            },
+            "properties": {}
+        }
+        
+        # This should work with the dict path
+        result = validate_geometry(geojson_content["geometry"])
+        assert result["type"] == "Point"
+
+    def test_multipolygon_handling(self):
+        """Test validation of MultiPolygon geometry."""
+        geometry = {
+            "type": "MultiPolygon",
+            "coordinates": [
+                [[
+                    [-122.5, 37.7],
+                    [-122.4, 37.7],
+                    [-122.4, 37.8],
+                    [-122.5, 37.8],
+                    [-122.5, 37.7]
+                ]],
+                [[
+                    [-122.3, 37.7],
+                    [-122.2, 37.7],
+                    [-122.2, 37.8],
+                    [-122.3, 37.8],
+                    [-122.3, 37.7]
+                ]]
+            ]
+        }
+        
+        result = validate_geometry(geometry)
+        assert result["type"] == "MultiPolygon"
+        assert "coordinates" in result
 
 
 class TestValidateDateRange:
@@ -440,6 +564,37 @@ class TestIntegration:
         # Should validate without errors
         validated = validate_geometry(bbox)
         assert validated == bbox
+
+    def test_wkt_to_bounds_workflow(self):
+        """Test WKT string to bounds calculation workflow."""
+        wkt = "POLYGON((-122.5 37.7, -122.3 37.7, -122.3 37.8, -122.5 37.8, -122.5 37.7))"
+        
+        # Validate WKT
+        validated = validate_geometry(wkt)
+        
+        # Calculate bounds
+        bounds = calculate_geometry_bounds(validated)
+        
+        assert bounds == (-122.5, 37.7, -122.3, 37.8)
+
+    def test_shapely_to_bounds_workflow(self):
+        """Test Shapely object to bounds calculation workflow."""
+        from shapely.geometry import box
+        
+        # Create a bounding box using Shapely
+        bbox = box(-122.5, 37.7, -122.3, 37.8)
+        
+        # Validate Shapely object
+        validated = validate_geometry(bbox)
+        
+        # Calculate bounds
+        bounds = calculate_geometry_bounds(validated)
+        
+        # Allow for small floating point differences
+        assert abs(bounds[0] - (-122.5)) < 1e-10
+        assert abs(bounds[1] - 37.7) < 1e-10
+        assert abs(bounds[2] - (-122.3)) < 1e-10
+        assert abs(bounds[3] - 37.8) < 1e-10
 
     @pytest.mark.parametrize(
         "item_type",
